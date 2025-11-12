@@ -4,15 +4,15 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
-#%% Creating the master bias for 9/08
+#%% Creating the master bias
 
 # Median combine the bias images
-def create_master_bias(image_folder):
+def create_master_bias(image_folder, num_images):
     # Load the images
     path = f"{image_folder}/BIAS"
     g_bias = [] # this creates an unfilled list
     
-    for i in range(12):
+    for i in range(num_images):
         number = str(i)
         while len(number) < 4:
             number = f"0{number}" #this is creating an index for numbers 0000 through 0007 to call
