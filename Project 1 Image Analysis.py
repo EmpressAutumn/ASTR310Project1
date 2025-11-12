@@ -1,4 +1,4 @@
-# Author - Evelynn Chara McNeil - with significant advising from Autumn Hoffensetz
+# Authors -  Autumn Hoffensetz, Evelynn Chara McNeil
 
 import numpy as np
 from astropy.io import fits
