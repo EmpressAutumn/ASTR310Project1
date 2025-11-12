@@ -1,3 +1,10 @@
 .idea/
+
+# FITS image files and metadata
+*.zip
 *.fit
 *.fits
+
+*_log.txt
+*.gif
+*.xml
