@@ -6,6 +6,10 @@ from tqdm import tqdm
 
 #%% Creating the master bias
 
+# ISSUES:
+#   Different file name formats
+#   Different filters
+
 # Median combine the bias images
 def create_master_bias(image_folder, num_images):
     # Load the images
@@ -15,7 +19,7 @@ def create_master_bias(image_folder, num_images):
     for i in range(num_images):
         number = str(i)
         while len(number) < 4:
-            number = f"0{number}" #this is creating an index for numbers 0000 through 0007 to call
+            number = f"0{number}" # this is creating an index for numbers 0000 through num_images to call
         g_bias.append([np.array(fits.open(f"{path}/{number}-g'.fits")[0].data)])
     print('Created a list containing each image')
 
