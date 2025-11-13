@@ -10,34 +10,34 @@ from tqdm import tqdm
 def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
     path = f"{image_folder}/BIAS"
-    g_bias = [] # this creates an unfilled list
+    bias = [] # this creates an unfilled list
     
     for i in range(num_images):
         number = str(i)
         while len(number) < 4:
             number = f"0{number}" # this is creating an index for numbers 0000 through num_images to call
-        g_bias.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
+        bias.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
     print('Created a list containing each image')
 
-    g_bias = np.vstack(g_bias)
+    bias = np.vstack(bias)
     print('Stacked each image matrix')
 
     # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
-    g_bias = np.transpose(g_bias, (1, 2, 0))
+    bias = np.transpose(bias, (1, 2, 0))
     print('Transposed the matrix')
     
     # Take the median of each pixel value
-    for i in tqdm(range(len(g_bias)), desc =f"{image_folder} Median Combination", unit = 'row'):
-        for j in range(len(g_bias[i])):
-            g_bias[i, j] = np.median(g_bias[i, j])
+    for i in tqdm(range(len(bias)), desc =f"{image_folder} Median Combination", unit = 'row'):
+        for j in range(len(bias[i])):
+            bias[i, j] = np.median(bias[i, j])
 
     # Remove the duplicate median values (Thank you NumPy for being awful!)
-    mast_bias = g_bias[:, :, 0]
+    master_bias = bias[:, :, 0]
     print('Removed duplicate median values')
 
     # Save the combined FITS bias image
-    hdu = fits.PrimaryHDU(mast_bias)
-    hdu.writeto(f"{path}/mast_bias-{filter}.fits", overwrite = True)
+    hdu = fits.PrimaryHDU(master_bias)
+    hdu.writeto(f"{path}/master_bias-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
 # Create master biases
