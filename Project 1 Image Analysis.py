@@ -41,9 +41,6 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
     bias, exptime = load_images(f"{image_folder}/BIAS", num_images, filter_name, file_prefix)
 
-    # Shift the images
-    """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
-
     # Median combine the biases
     master_bias = median_combine(bias)
     print('Removed duplicate median values')
@@ -66,9 +63,6 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
     dark, exptime = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
 
-    # Shift the images
-    """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
-
     # Load the master bias and subtract it
     bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
     master_dark = median_combine(dark) - np.array(bias_hdu.data)
@@ -89,9 +83,6 @@ create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 def create_master_flat(image_folder, num_images, filter_name, file_prefix="", kind=""):
     # Load the images
     flat, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
-
-    # Shift the images
-    """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
 
     # Load the master bias and subtract it
     bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
