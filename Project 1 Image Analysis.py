@@ -110,3 +110,40 @@ create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_")
 create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
+
+#%% Calibrating the science images
+
+def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", flat_kind=""):
+    for i in range(num_images):
+        # Load the image
+        number = str(i)
+        while len(number) < 4:
+            number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
+        hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+        exptime = hdu.header["EXPTIME"]
+
+        # Load the master bias and subtract it
+        bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+        image = np.array(hdu.data) - np.array(bias_hdu.data)
+
+        # Load the master dark and subtract it, accounting for different exposure times
+        dark_hdu = fits.open(f"{image_folder}/DARK/master_bias-{filter_name}.fits")[0]
+        dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
+        image -= dark
+
+        # Load the master flat and divide by it
+        if flat_kind == "":
+            flat_hdu = fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
+        else:
+            flat_hdu = fits.open(f"{image_folder}/FLAT/{flat_kind}-master_flat-{filter_name}.fits")[0]
+
+        calibrated_image = image / np.array(flat_hdu.data)
+
+        # Shift the image
+        """Evelynn, shift the image here"""
+
+        # Save the calibrated FITS science image
+        hdu = fits.PrimaryHDU(calibrated_image)
+        hdu.header["EXPTIME"] = exptime
+        hdu.writeto(f"{image_folder}/CALIBRATED/science{number}-{filter_name}.fits", overwrite=True)
+        print(f"Saved calibrated image {number}")
