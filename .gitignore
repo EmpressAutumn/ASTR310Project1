@@ -1,5 +1,8 @@
 .idea/
 
+# MacOS specific files
+*.DS_Store
+
 # FITS image files and metadata
 *.zip
 *.fit

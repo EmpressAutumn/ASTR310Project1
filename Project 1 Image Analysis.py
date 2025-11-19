@@ -5,17 +5,20 @@ from astropy.io import fits
 from tqdm import tqdm
 
 def load_images(path, num_images, filter_name, file_prefix):
-    dark = []  # this creates an unfilled list
+    images = []  # this creates an unfilled list
+    exptime = 0
 
     for i in range(num_images):
         number = str(i)
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
-        dark.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
+        hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
+        exptime = hdu.header["EXPTIME"]
+        images.append([np.array(hdu.data)])
     print("Created a list containing each image")
 
     print("Stacked each image matrix")
-    return np.vstack(dark)
+    return np.vstack(images), exptime
 
 def median_combine(image_array):
     # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
@@ -36,7 +39,7 @@ def median_combine(image_array):
 # Median combine the bias images
 def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
-    bias = load_images(f"{image_folder}/BIAS", num_images, filter_name, file_prefix)
+    bias, exptime = load_images(f"{image_folder}/BIAS", num_images, filter_name, file_prefix)
 
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
@@ -47,6 +50,7 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
 
     # Save the combined FITS bias image
     hdu = fits.PrimaryHDU(master_bias)
+    hdu.header["EXPTIME"] = exptime
     hdu.writeto(f"{image_folder}/BIAS/master_bias-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
@@ -60,17 +64,18 @@ create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 
 def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
-    dark = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
+    dark, exptime = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
 
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
 
-    # Load the master dark and subtract it
-    bias = np.array(fits.open(f"{image_folder}/BIAS/master_bias-g'.fits"))
-    master_dark = median_combine(dark) - bias
+    # Load the master bias and subtract it
+    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+    master_dark = median_combine(dark) - np.array(bias_hdu.data)
 
     # Save the combined FITS dark image
     hdu = fits.PrimaryHDU(master_dark)
+    hdu.header["EXPTIME"] = exptime
     hdu.writeto(f"{image_folder}/DARK/master_dark-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
@@ -78,3 +83,32 @@ create_master_dark("20250908_07in_NGC6946", 7, "g'")
 create_master_dark("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
+
+#%% Creating the master flats
+
+def create_master_flat(image_folder, num_images, filter_name, file_prefix="", type=""):
+    # Load the images
+    flat, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
+
+    # Shift the images
+    """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
+
+    # Load the master bias and subtract it
+    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+    flat = median_combine(flat) - np.array(bias_hdu.data)
+
+    # Load the master dark and subtract it, accounting for different exposure times
+    dark_hdu = fits.open(f"{image_folder}/DARK/master_bias-{filter_name}.fits")[0]
+    dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
+    flat -= dark
+
+    # Normalize the flat
+    master_flat = flat / np.median(flat)
+
+    # Save the combined FITS flat image
+    hdu = fits.PrimaryHDU(master_flat)
+    if type == "":
+        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
+    else:
+        hdu.writeto(f"{image_folder}/FLAT/{type}-master_flat-{filter_name}.fits", overwrite = True)
+    print('Saved the .fits image')
