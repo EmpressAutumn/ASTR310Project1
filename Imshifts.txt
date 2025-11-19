@@ -1,0 +1,24 @@
+Image Name 		Date	Shift to (x, y)	Note
+
+0000-g'.fits		908	0, 0		Target
+0001-g'.fits		908	-2, 0
+0002-g'.fits		908 	-4, 0
+0003-g'.fits		908	-6, 0
+0004-g'.fits		908	-8, 1
+0005-g'.fits		908	-11, 1
+0006-g'.fits		908	-13, 1
+0007-g'.fits		908	89, -147	Rotate 180*
+0008-g'.fits		908	87, -147	Rotate 180*
+0009-g'.fits		908	86, -148	Rotate 180*
+
+NGC6946_0000-g'.fits	928	0, 0		Target
+NGC6964_0001-g'.fits	928	-1, -1
+NGC6964_0002-g'.fits	928	-5, 0
+NGC6964_0003-g'.fits	928	-6, 0
+NGC6964_0004-g'.fits	928	-8, 0
+NGC6964_0006-g'.fits	928	-11, 1
+NGC6964_0007-g'.fits	928	-13, 1
+NGC6964_0008-g'.fits	928	-15, 1
+NGC6964_0009-g'.fits	928	-17, 1
+NGC6964_0010-g'.fits	928	-749, 615	Rotate 180*
+NGC6964_0011-g'.fits	928	-748, 618	Rotate 180*
