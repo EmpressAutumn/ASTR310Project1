@@ -12,7 +12,10 @@ def load_images(path, num_images, filter_name, file_prefix):
         number = str(i)
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
-        hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
+        try:
+            hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
+        except FileNotFoundError:
+            continue
         exptime = hdu.header["EXPTIME"]
         images.append([np.array(hdu.data)])
     print("Created a list containing each image")
@@ -119,7 +122,10 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         number = str(i)
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
-        hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+        try:
+            hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+        except FileNotFoundError:
+            continue
         exptime = hdu.header["EXPTIME"]
 
         # Load the master bias and subtract it
