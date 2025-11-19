@@ -4,6 +4,20 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
+def median_combine(image_array):
+    # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
+    array_image = np.transpose(image_array, (1, 2, 0))
+    print("Transposed the matrix")
+
+    # Take the median of each pixel value
+    for i in tqdm(range(len(array_image)), desc=f"{len(image_array)} Images Median Combination", unit="row"):
+        for j in range(len(array_image[i])):
+            array_image[i, j] = np.median(array_image[i, j])
+
+    # Remove the duplicate median values (Thank you NumPy for being awful!)
+    print("Removed duplicate median values")
+    return array_image[:, :, 0]
+
 #%% Creating the master bias
 
 # Median combine the bias images
@@ -25,17 +39,8 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
 
-    # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
-    bias = np.transpose(bias, (1, 2, 0))
-    print('Transposed the matrix')
-    
-    # Take the median of each pixel value
-    for i in tqdm(range(len(bias)), desc =f"{image_folder} Median Combination", unit = 'row'):
-        for j in range(len(bias[i])):
-            bias[i, j] = np.median(bias[i, j])
-
-    # Remove the duplicate median values (Thank you NumPy for being awful!)
-    master_bias = bias[:, :, 0]
+    # Median combine the biases
+    master_bias = median_combine(bias)
     print('Removed duplicate median values')
 
     # Save the combined FITS bias image
@@ -69,21 +74,9 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
 
-    # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
-    dark = np.transpose(dark, (1, 2, 0))
-    print('Transposed the matrix')
-
-    # Take the median of each pixel value
-    for i in tqdm(range(len(dark)), desc =f"{image_folder} Median Combination", unit = 'row'):
-        for j in range(len(dark[i])):
-            dark[i, j] = np.median(dark[i, j])
-
-    dark = dark[:, :, 0]
-    print('Removed duplicate median values')
-
     # Load the master dark and subtract it
     bias = np.array(fits.open(f"{image_folder}/BIAS/master_bias-g'.fits"))
-    master_dark = dark - bias
+    master_dark = median_combine(dark) - bias
 
     # Save the combined FITS dark image
     hdu = fits.PrimaryHDU(master_dark)
