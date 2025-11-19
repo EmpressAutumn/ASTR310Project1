@@ -4,6 +4,19 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
+def load_images(path, num_images, filter_name, file_prefix):
+    dark = []  # this creates an unfilled list
+
+    for i in range(num_images):
+        number = str(i)
+        while len(number) < 4:
+            number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
+        dark.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
+    print("Created a list containing each image")
+
+    print("Stacked each image matrix")
+    return np.vstack(dark)
+
 def median_combine(image_array):
     # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
     array_image = np.transpose(image_array, (1, 2, 0))
@@ -23,18 +36,7 @@ def median_combine(image_array):
 # Median combine the bias images
 def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
-    path = f"{image_folder}/BIAS"
-    bias = [] # this creates an unfilled list
-    
-    for i in range(num_images):
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}" # this is creating an index for numbers 0000 through num_images to call
-        bias.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
-    print('Created a list containing each image')
-
-    bias = np.vstack(bias)
-    print('Stacked each image matrix')
+    bias = load_images(f"{image_folder}/BIAS", num_images, filter_name, file_prefix)
 
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
@@ -45,7 +47,7 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
 
     # Save the combined FITS bias image
     hdu = fits.PrimaryHDU(master_bias)
-    hdu.writeto(f"{path}/master_bias-{filter_name}.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/BIAS/master_bias-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
 # Create master biases
@@ -58,18 +60,7 @@ create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 
 def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     # Load the images
-    path = f"{image_folder}/DARK"
-    dark = [] # this creates an unfilled list
-
-    for i in range(num_images):
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}" # this is creating an index for numbers 0000 through num_images to call
-        dark.append([np.array(fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0].data)])
-    print('Created a list containing each image')
-
-    dark = np.vstack(dark)
-    print('Stacked each image matrix')
+    dark = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
 
     # Shift the images
     """MAKE SURE THE IMAGES ARE PROPERLY SHIFTED"""
@@ -80,7 +71,7 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
 
     # Save the combined FITS dark image
     hdu = fits.PrimaryHDU(master_dark)
-    hdu.writeto(f"{path}/master_dark-{filter_name}.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/DARK/master_dark-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
