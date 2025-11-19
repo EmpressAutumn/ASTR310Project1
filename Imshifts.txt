@@ -22,3 +22,16 @@ NGC6964_0008-g'.fits	928	-15, 1
 NGC6964_0009-g'.fits	928	-17, 1
 NGC6964_0010-g'.fits	928	-749, 615	Rotate 180*
 NGC6964_0011-g'.fits	928	-748, 618	Rotate 180*
+
+NGC6964_0000-ha.fits	928	0, 0 		Target
+NGC6964_0001-ha.fits	928	-4, 1
+NGC6964_0002-ha.fits	928	-5, 1
+NGC6964_0003-ha.fits	928	-7, 1		Streaks
+NGC6964_0004-ha.fits	928	-8, 1
+NGC6964_0005-ha.fits	928	-9, 2
+NGC6964_0006-ha.fits	928	-11, 2
+NGC6964_0007-ha.fits	928	-13, 1
+NGC6964_0008-ha.fits	928	-15, 1	
+NGC6964_0009-ha.fits	928	-18, 2
+NGC6964_0010-ha.fits	928	-751, 616	Rotate 180*
+NGC6964_0011-ha.fits	928	-751, 613	Rotate 180*
