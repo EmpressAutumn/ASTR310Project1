@@ -86,7 +86,7 @@ create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
 #%% Creating the master flats
 
-def create_master_flat(image_folder, num_images, filter_name, file_prefix="", type=""):
+def create_master_flat(image_folder, num_images, filter_name, file_prefix="", kind=""):
     # Load the images
     flat, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
 
@@ -107,8 +107,15 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ty
 
     # Save the combined FITS flat image
     hdu = fits.PrimaryHDU(master_flat)
-    if type == "":
+    if kind == "":
         hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
     else:
-        hdu.writeto(f"{image_folder}/FLAT/{type}-master_flat-{filter_name}.fits", overwrite = True)
+        hdu.writeto(f"{image_folder}/FLAT/{kind}-master_flat-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
+
+create_master_flat("20250908_07in_NGC6946", 12, "g'")
+create_master_flat("20250928_07in_NGC6946", 9, "ha", "NGC6946_")
+create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_")
+create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_")
+create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat")
+create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
