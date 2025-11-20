@@ -117,6 +117,9 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat"
 #%% Calibrating the science images
 
 def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", flat_kind=""):
+    science = []
+    exptime = 0
+
     for i in range(num_images):
         # Load the image
         number = str(i)
@@ -148,8 +151,13 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         # Shift the image
         """Evelynn, shift the image here"""
 
-        # Save the calibrated FITS science image
-        hdu = fits.PrimaryHDU(calibrated_image)
-        hdu.header["EXPTIME"] = exptime
-        hdu.writeto(f"{image_folder}/CALIBRATED/science{number}-{filter_name}.fits", overwrite=True)
-        print(f"Saved calibrated image {number}")
+        science.append(calibrated_image)
+        print(f"Calibrated image {number}")
+
+    master_science = median_combine(np.vstack(science))
+
+    # Save the calibrated FITS science image
+    hdu = fits.PrimaryHDU(master_science)
+    hdu.header["EXPTIME"] = exptime
+    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}.fits", overwrite=True)
+    print("Saved combined and calibrated image")
