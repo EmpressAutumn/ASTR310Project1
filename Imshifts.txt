@@ -37,7 +37,7 @@ NGC6946_0010-ha.fits	928	-751, 616	Rotate 180
 NGC6946_0011-ha.fits	928	-751, 613	Rotate 180
 
 * = LIGHT_						
-*NGC 6946_0000-ha.fits	1003	0, 0		Target,	
+*NGC 6946_0000-ha.fits	1003	0, 0		Target	
 *NGC 6946_0001-ha.fits	1003	-1, 1
 *NGC 6946_0002-ha.fits	1003	-3, 1
 *NGC 6946_0003-ha.fits	1003	-4, 2		Satellite Streaks
@@ -88,3 +88,34 @@ NGC6946_0011-ha.fits	928	-751, 613	Rotate 180
 *NGC6946_0021-g'.fits	1015	-62, 174	Rotate 180
 *NGC6946_0022-g'.fits	1015	-68, 171	Rotate 180
 
+*NGC6946_0000-ha.fits	1015	0, 0 		Target
+*NGC6946_0001-ha.fits	1015	-1, 0 		
+*NGC6946_0002-ha.fits	1015	-4, 0
+*NGC6946_0003-ha.fits	1015	-8, 195		Rotate 180
+*NGC6946_0004-ha.fits	1015	-9, 194		Rotate 180
+*NGC6946_0006-ha.fits	1015	-12, 194	Rotate 180
+*NGC6946_0007-ha.fits	1015	-14, 194	Rotate 180
+*NGC6946_0008-ha.fits	1015	-15, 194	Rotate 180
+*NGC6946_0009-ha.fits	1015	-17, 193	Rotate 180
+*NGC6946_0011-ha.fits	1015	-20, 191	Rotate 180
+*NGC6946_0012-ha.fits	1015	-26, 190	Rotate 180
+*NGC6946_0013-ha.fits	1015	-32, 188	Rotate 180
+*NGC6946_0014-ha.fits	1015	-38, 185	Rotate 180
+*NGC6946_0016-ha.fits	1015	-43, 183	Rotate 180
+*NGC6946_0017-ha.fits	1015	-49, 181	Rotate 180
+*NGC6946_0018-ha.fits	1015	-55, 178	Rotate 180
+*NGC6946_0019-ha.fits	1015	-61, 175	Rotate 180
+*NGC6946_0021-ha.fits	1015	-67, 171	Rotate 180
+*NGC6946_0022-ha.fits	1015	-72, 168	Rotate 180
+
+
+Target Shifts
+Image Name 		Date	Shift to (x, y)	Note
+0000-g'.fits		908	0, 0		Main Target
+NGC6946_0000-g'.fits	928	1115, 75		
+*NGC6946_0000-g'.fits	1015	170, -67
+
+NGC6946_0000-ha.fits	928	1117, 74 	
+*NGC6946_0000-ha.fits	1009	272, -100 
+*NGC 6946_0000-ha.fits	1003	178, 103
+*NGC6946_0000-ha.fits	1015	170, 66
