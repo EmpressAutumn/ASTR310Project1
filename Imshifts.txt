@@ -7,31 +7,84 @@ Image Name 		Date	Shift to (x, y)	Note
 0004-g'.fits		908	-8, 1
 0005-g'.fits		908	-11, 1
 0006-g'.fits		908	-13, 1
-0007-g'.fits		908	89, -147	Rotate 180*
-0008-g'.fits		908	87, -147	Rotate 180*
-0009-g'.fits		908	86, -148	Rotate 180*
+0007-g'.fits		908	89, -147	Rotate 180
+0008-g'.fits		908	87, -147	Rotate 180
+0009-g'.fits		908	86, -148	Rotate 180
 
 NGC6946_0000-g'.fits	928	0, 0		Target
-NGC6964_0001-g'.fits	928	-1, -1
-NGC6964_0002-g'.fits	928	-5, 0
-NGC6964_0003-g'.fits	928	-6, 0
-NGC6964_0004-g'.fits	928	-8, 0
-NGC6964_0006-g'.fits	928	-11, 1
-NGC6964_0007-g'.fits	928	-13, 1
-NGC6964_0008-g'.fits	928	-15, 1
-NGC6964_0009-g'.fits	928	-17, 1
-NGC6964_0010-g'.fits	928	-749, 615	Rotate 180*
-NGC6964_0011-g'.fits	928	-748, 618	Rotate 180*
+NGC6946_0001-g'.fits	928	-1, -1
+NGC6946_0002-g'.fits	928	-5, 0
+NGC6946_0003-g'.fits	928	-6, 0
+NGC6946_0004-g'.fits	928	-8, 0
+NGC6946_0006-g'.fits	928	-11, 1
+NGC6946_0007-g'.fits	928	-13, 1
+NGC6946_0008-g'.fits	928	-15, 1
+NGC6946_0009-g'.fits	928	-17, 1
+NGC6946_0010-g'.fits	928	-749, 615	Rotate 180
+NGC6946_0011-g'.fits	928	-748, 618	Rotate 180
 
-NGC6964_0000-ha.fits	928	0, 0 		Target
-NGC6964_0001-ha.fits	928	-4, 1
-NGC6964_0002-ha.fits	928	-5, 1
-NGC6964_0003-ha.fits	928	-7, 1		Streaks
-NGC6964_0004-ha.fits	928	-8, 1
-NGC6964_0005-ha.fits	928	-9, 2
-NGC6964_0006-ha.fits	928	-11, 2
-NGC6964_0007-ha.fits	928	-13, 1
-NGC6964_0008-ha.fits	928	-15, 1	
-NGC6964_0009-ha.fits	928	-18, 2
-NGC6964_0010-ha.fits	928	-751, 616	Rotate 180*
-NGC6964_0011-ha.fits	928	-751, 613	Rotate 180*
+NGC6946_0000-ha.fits	928	0, 0 		Target
+NGC6946_0001-ha.fits	928	-4, 1
+NGC6946_0002-ha.fits	928	-5, 1
+NGC6946_0003-ha.fits	928	-7, 1		Streaks
+NGC6946_0004-ha.fits	928	-8, 1
+NGC6946_0005-ha.fits	928	-9, 2
+NGC6946_0006-ha.fits	928	-11, 2
+NGC6946_0007-ha.fits	928	-13, 1
+NGC6946_0008-ha.fits	928	-15, 1	
+NGC6946_0009-ha.fits	928	-18, 2
+NGC6946_0010-ha.fits	928	-751, 616	Rotate 180
+NGC6946_0011-ha.fits	928	-751, 613	Rotate 180
+
+* = LIGHT_						
+*NGC 6946_0000-ha.fits	1003	0, 0		Target,	
+*NGC 6946_0001-ha.fits	1003	-1, 1
+*NGC 6946_0002-ha.fits	1003	-3, 1
+*NGC 6946_0003-ha.fits	1003	-4, 2		Satellite Streaks
+*NGC 6946_0004-ha.fits	1003	-7, 3
+*NGC 6946_0005-ha.fits	1003	-9, 3	
+*NGC 6946_0006-ha.fits	1003	-12, 4
+*NGC 6946_0008-ha.fits	1003	1534, 627	Rotate 180
+*NGC 6946_0009-ha.fits	1003	80, 174		Rotate 180
+*NGC 6946_0010-ha.fits	1003	79, 173		Rotate 180
+*NGC 6946_0011-ha.fits	1003	78, 172		Rotate 180
+*NGC 6946_0012-ha.fits	1003	77, 171		Rotate 180
+*NGC 6946_0013-ha.fits	1003	76, 171		Rotate 180
+
+*NGC6946_0000-ha.fits	1009	0, 0 		Target, Rotate 180
+*NGC6946_0001-ha.fits	1009	-1, -1		Rotate 180
+*NGC6946_0002-ha.fits	1009	-3, -2		Rotate 180
+*NGC6946_0003-ha.fits	1009	-4, -2		Rotate 180
+*NGC6946_0004-ha.fits	1009	-5, -2		Rotate 180
+*NGC6946_0005-ha.fits	1009	-6, -3		Rotate 180
+*NGC6946_0006-ha.fits	1009	-8, -3		Rotate 180
+*NGC6946_0007-ha.fits	1009	-9, -4		Rotate 180
+*NGC6946_0008-ha.fits	1009	-10, -4		Rotate 180
+*NGC6946_0009-ha.fits	1009	-11, -4		Rotate 180
+*NGC6946_0011-ha.fits	1009	-12, -6		Rotate 180
+*NGC6946_0013-ha.fits	1009	-18, 24		Rotate 180
+*NGC6946_0014-ha.fits	1009	-22, 22		Rotate 180
+*NGC6946_0016-ha.fits	1009	-29, 17		Rotate 180
+*NGC6946_0017-ha.fits	1009	-34, 14		Rotate 180
+
+*NGC6946_0000-g'.fits	1015	0, 0 		Target
+*NGC6946_0001-g'.fits	1015	-1, 0
+*NGC6946_0002-g'.fits	1015	-3, 0
+*NGC6946_0003-g'.fits	1015	-6, 197		Rotate 180
+*NGC6946_0004-g'.fits	1015	-8, 196		Rotate 180
+*NGC6946_0005-g'.fits	1015	-9, 196		Rotate 180
+*NGC6946_0006-g'.fits	1015	-10, 196	Rotate 180
+*NGC6946_0007-g'.fits	1015	-12, 195	Rotate 180
+*NGC6946_0008-g'.fits	1015	-14, 195	Rotate 180
+*NGC6946_0009-g'.fits	1015	-15, 194	Rotate 180
+*NGC6946_0011-g'.fits	1015	-18, 194	Rotate 180
+*NGC6946_0012-g'.fits	1015	-22, 192	Rotate 180
+*NGC6946_0013-g'.fits	1015	-28, 190	Rotate 180
+*NGC6946_0014-g'.fits	1015	-33, 188	Rotate 180
+*NGC6946_0016-g'.fits	1015	-39, 185	Rotate 180
+*NGC6946_0017-g'.fits	1015	-45, 183	Rotate 180
+*NGC6946_0018-g'.fits	1015	-50, 181	Rotate 180
+*NGC6946_0019-g'.fits	1015	-56, 178	Rotate 180
+*NGC6946_0021-g'.fits	1015	-62, 174	Rotate 180
+*NGC6946_0022-g'.fits	1015	-68, 171	Rotate 180
+
