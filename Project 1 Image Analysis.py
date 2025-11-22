@@ -23,7 +23,6 @@ def load_images(path, num_images, filter_name, file_prefix):
     print("Stacked each image matrix")
     return np.vstack(images), exptime
 
-
 def median_combine(image_array):
     # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
     array_image = np.transpose(image_array, (1, 2, 0))
@@ -38,6 +37,13 @@ def median_combine(image_array):
     print("Removed duplicate median values")
     return array_image[:, :, 0]
 
+# Born of necessity, born of AI hallucination
+def autostrip(imshifts):
+    for key, values in imshifts:
+        key.strip()
+        for value in values:
+            if type(value) == str:
+                value.strip()
 
 #%% Creating the master bias
 
@@ -117,13 +123,14 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat"
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
 
 #%% Calibrating the science images
-import library.imshift as imshift
+from library.imshift import imshift
 
 def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", flat_kind=""):
     science = []
     exptime = 0
-    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skip_rows = 1, autostrip = True)
+    shifts = np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1)
     shifts = {row[0]: row[1:] for row in shifts}
+    autostrip(shifts)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -147,7 +154,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
 
         # Load the masterlat and divide by it
         if flat_kind == "":
-            flat_hdu = fits. fopen(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
+            flat_hdu = fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
         else:
             flat_hdu = fits.open(f"{image_folder}/FLAT/{flat_kind}-master_flat-{filter_name}.fits")[0]
 
@@ -182,8 +189,9 @@ calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_")
 
 def final_shift(image_folders, filter_name):
     science = []
-    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skip_rows = 1, autostrip = True)
+    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skiprows = 1)
     shifts = {row[0]: row[1:] for row in shifts}
+    autostrip(shifts)
     
     for i in range(len(image_folders)):
         # Load the image
