@@ -4,6 +4,8 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
+from library.imshift import imshift
+
 def load_images(path, num_images, filter_name, file_prefix):
     images = []  # this creates an unfilled list
     exptime = 0
@@ -39,11 +41,11 @@ def median_combine(image_array):
 
 # Born of necessity, born of AI hallucination
 def autostrip(imshifts):
-    for key, values in imshifts:
+    for key in imshifts.keys():
         key.strip()
-        for value in values:
-            if type(value) == str:
-                value.strip()
+        for i in range(len(imshifts[key])):
+            imshifts[key][i] = imshifts[key][i].strip()
+    return imshifts
 
 #%% Creating the master bias
 
@@ -123,14 +125,14 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat"
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
 
 #%% Calibrating the science images
-from library.imshift import imshift
 
 def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", flat_kind=""):
     science = []
     exptime = 0
-    shifts = np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1)
+    shifts = np.loadtxt("Imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
-    autostrip(shifts)
+    shifts = autostrip(shifts)
+    print(shifts)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -150,7 +152,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         # Load the master dark and subtract it, accounting for different exposure times
         dark_hdu = fits.open(f"{image_folder}/DARK/master_dark-{filter_name}.fits")[0]
         dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
-        image -= dark
+        image -= dark.astype(np.uint16)
 
         # Load the masterlat and divide by it
         if flat_kind == "":
@@ -161,8 +163,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         calibrated_image = image / np.array(flat_hdu.data)
         
         # Shift the image
-        """Evelynn, shift the image here"""
-        calibrated_image = imshift(calibrated_image, shifts[f"{file_prefix}{number}-{filter_name}.fits"][1], shifts[f"{file_prefix}{number}-{filter_name}.fits"][2],
+        calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]), int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
                                    "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][3])
         
         science.append(calibrated_image)
@@ -189,7 +190,7 @@ calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_")
 
 def final_shift(image_folders, filter_name):
     science = []
-    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skiprows = 1)
+    shifts = np.loadtxt("Imshifts.txt", delimiter = ',' , skiprows = 1)
     shifts = {row[0]: row[1:] for row in shifts}
     autostrip(shifts)
     
@@ -200,7 +201,7 @@ def final_shift(image_folders, filter_name):
             number = f"0{number}"  
         image = fits.open(f"{image_folders[i]}/LIGHT/master_science_-{filter_name}.fits")[0]
         
-        image = imshift(image, shifts[f"{image_folders[i]}-{filter_name}"][1], shifts[f"{image_folders[i]}-{filter_name}"][2])
+        image = imshift(image, int(shifts[f"{image_folders[i]}-{filter_name}"][1]), int(shifts[f"{image_folders[i]}-{filter_name}"][2]))
         science.append(image)
         
     master_science = np.sum(np.vstack(science), axis = 0)
