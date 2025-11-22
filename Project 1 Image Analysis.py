@@ -23,6 +23,7 @@ def load_images(path, num_images, filter_name, file_prefix):
     print("Stacked each image matrix")
     return np.vstack(images), exptime
 
+
 def median_combine(image_array):
     # Transpose the matrix: image[row[column[]]] -> row[column[image[]]]
     array_image = np.transpose(image_array, (1, 2, 0))
@@ -36,6 +37,7 @@ def median_combine(image_array):
     # Remove the duplicate median values (Thank you NumPy for being awful!)
     print("Removed duplicate median values")
     return array_image[:, :, 0]
+
 
 #%% Creating the master bias
 
@@ -92,9 +94,9 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
     flat = median_combine(flat) - np.array(bias_hdu.data)
 
     # Load the master dark and subtract it, accounting for different exposure times
-    dark_hdu = fits.open(f"{image_folder}/DARK/master_bias-{filter_name}.fits")[0]
+    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark-{filter_name}.fits")[0]
     dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
-    flat -= dark
+    flat -= dark.astype(np.uint16)
 
     # Normalize the flat
     master_flat = flat / np.median(flat)
@@ -115,12 +117,15 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat"
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
 
 #%% Calibrating the science images
+import library.imshift as imshift
 
 def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", flat_kind=""):
     science = []
     exptime = 0
-
-    for i in range(num_images):
+    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skip_rows = 1, autostrip = True)
+    shifts = {row[0]: row[1:] for row in shifts}
+    
+    for i in tqdm(range(num_images)):
         # Load the image
         number = str(i)
         while len(number) < 4:
@@ -136,28 +141,68 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         image = np.array(hdu.data) - np.array(bias_hdu.data)
 
         # Load the master dark and subtract it, accounting for different exposure times
-        dark_hdu = fits.open(f"{image_folder}/DARK/master_bias-{filter_name}.fits")[0]
+        dark_hdu = fits.open(f"{image_folder}/DARK/master_dark-{filter_name}.fits")[0]
         dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
         image -= dark
 
-        # Load the master flat and divide by it
+        # Load the masterlat and divide by it
         if flat_kind == "":
-            flat_hdu = fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
+            flat_hdu = fits. fopen(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
         else:
             flat_hdu = fits.open(f"{image_folder}/FLAT/{flat_kind}-master_flat-{filter_name}.fits")[0]
 
         calibrated_image = image / np.array(flat_hdu.data)
-
+        
         # Shift the image
         """Evelynn, shift the image here"""
-
+        calibrated_image = imshift(calibrated_image, shifts[f"{file_prefix}{number}-{filter_name}.fits"][1], shifts[f"{file_prefix}{number}-{filter_name}.fits"][2],
+                                   "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][3])
+        
         science.append(calibrated_image)
         print(f"Calibrated image {number}")
 
-    master_science = median_combine(np.vstack(science))
+    master_science = np.sum(np.vstack(science), axis = 0)
 
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(master_science)
     hdu.header["EXPTIME"] = exptime
     hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
+
+calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
+calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_")
+calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC_6946_")
+
+calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_")
+calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_")
+calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
+calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_")
+
+#%%
+
+def final_shift(image_folders, filter_name):
+    science = []
+    shifts = np.loadtxt("imshifts.txt", delimiter = ',' , skip_rows = 1, autostrip = True)
+    shifts = {row[0]: row[1:] for row in shifts}
+    
+    for i in range(len(image_folders)):
+        # Load the image
+        number = str(i)
+        while len(number) < 4:
+            number = f"0{number}"  
+        image = fits.open(f"{image_folders[i]}/LIGHT/master_science_-{filter_name}.fits")[0]
+        
+        image = imshift(image, shifts[f"{image_folders[i]}-{filter_name}"][1], shifts[f"{image_folders[i]}-{filter_name}"][2])
+        science.append(image)
+        
+    master_science = np.sum(np.vstack(science), axis = 0)
+
+        # Save the calibrated FITS science image
+    hdu = fits.PrimaryHDU(master_science)
+    hdu.writeto(f"master_science-{filter_name}.fits", overwrite=True)
+    print("Saved combined and calibrated image")
+    
+final_shift(["20250908_07in_NGC6946","20250928_07in_NGC6946","202501015_07in_NGC6946"],"g'")
+final_shift(["20250928_07in_NGC6946", "202501003_07in_NGC6946","202501009_07in_NGC6946","202501015_07in_NGC6946"], "ha")   
+        
+        
