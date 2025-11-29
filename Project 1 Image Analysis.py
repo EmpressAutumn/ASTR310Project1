@@ -75,6 +75,7 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
 # Create master biases
 create_master_bias("20250908_07in_NGC6946", 12, "g'")
 create_master_bias("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
+create_master_bias("20251003_07in_NGC6946", 7, "ha", "BIAS_NGC 6946_")
 create_master_bias("20251009_07in_NGC6946", 7, "ha", "BIAS_NGC6946_")
 create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 
@@ -96,6 +97,7 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
 create_master_dark("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
+create_master_dark("20251003_07in_NGC6964", 7, "ha", "DARK NGC6964_")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
