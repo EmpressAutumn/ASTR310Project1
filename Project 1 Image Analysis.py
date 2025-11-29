@@ -5,19 +5,27 @@ from astropy.io import fits
 from tqdm import tqdm
 
 from library.imshift import imshift
+#%% 
 
 def load_images(path, num_images, filter_name, file_prefix):
     images = []  # this creates an unfilled list
     exptime = 0
+    filts = ["g'", "i'","ha"]
 
     for i in range(num_images):
         number = str(i)
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
+        
         try:
             hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
         except FileNotFoundError:
-            continue
+            for f in filts:
+                try:
+                    hdu = fits.open(f"{path}/{file_prefix}{number}-{f}.fits")[0]
+                    break
+                except FileNotFoundError:
+                    continue
         exptime = hdu.header["EXPTIME"]
         images.append([np.array(hdu.data)])
     print("Created a list containing each image")
@@ -38,7 +46,7 @@ def median_combine(image_array):
     # Remove the duplicate median values (Thank you NumPy for being awful!)
     print("Removed duplicate median values")
     return array_image[:, :, 0]
-
+#%% 
 # Born of necessity, born of AI hallucination
 def autostrip(imshifts):
     for key in imshifts.keys():
@@ -61,7 +69,7 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     # Save the combined FITS bias image
     hdu = fits.PrimaryHDU(master_bias)
     hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"{image_folder}/BIAS/master_bias-{filter_name}.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/BIAS/master_bias.fits", overwrite = True)
     print('Saved the .fits image')
 
 # Create master biases
@@ -77,13 +85,13 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     dark, exptime = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
 
     # Load the master bias and subtract it
-    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias.fits")[0]
     master_dark = median_combine(dark) - np.array(bias_hdu.data)
 
     # Save the combined FITS dark image
     hdu = fits.PrimaryHDU(master_dark)
     hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"{image_folder}/DARK/master_dark-{filter_name}.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/DARK/master_dark.fits", overwrite = True)
     print('Saved the .fits image')
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
@@ -98,11 +106,11 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
     flat, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
 
     # Load the master bias and subtract it
-    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+    bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias.fits")[0]
     flat = median_combine(flat) - np.array(bias_hdu.data)
 
     # Load the master dark and subtract it, accounting for different exposure times
-    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark-{filter_name}.fits")[0]
+    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
     dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
     flat -= dark.astype(np.uint16)
 
