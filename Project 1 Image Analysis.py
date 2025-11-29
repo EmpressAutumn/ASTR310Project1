@@ -96,8 +96,8 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     print('Saved the .fits image')
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
-create_master_dark("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
-create_master_dark("20251003_07in_NGC6964", 7, "ha", "DARK NGC6964_")
+#Don't create dark for 9/28
+create_master_dark("20251003_07in_NGC6946", 7, "ha", "DARK_NGC 6946_")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
@@ -128,11 +128,20 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
     print('Saved the .fits image')
 
 create_master_flat("20250908_07in_NGC6946", 12, "g'")
-create_master_flat("20250928_07in_NGC6946", 9, "ha", "NGC6946_")
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_")
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_")
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "skyflat")
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "skyflat")
+
+create_master_flat("20250928_07in_NGC_6946", 10, "g'", "NGC6946_", "dome")
+create_master_flat("20250928_07in_NGC_6946", 8, "ha", "NGC6946_", "dome")
+
+create_master_flat("20251003_07in_NGC6946", 11, "ha", "FLAT_SKYFLAT_", "sky")
+create_master_flat("20251003_07in_NGC6946", 10, "ha", "FLAT_NGC 6946", "dome")
+
+create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
+create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_", "sky")
+
+create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "dome")
+create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
+create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "sky")
+create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_", "sky")
 
 #%% Calibrating the science images
 
