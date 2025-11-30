@@ -133,13 +133,13 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
         hdu.writeto(f"{image_folder}/FLAT/{kind}-master_flat-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
-#create_master_flat("20250908_07in_NGC6946", 12, "g'")
+create_master_flat("20250908_07in_NGC6946", 12, "g'") 
 
-create_master_flat("20250928_07in_NGC_6946", 10, "g'", "NGC6946_", "dome")
-create_master_flat("20250928_07in_NGC_6946", 8, "ha", "NGC6946_", "dome")
+create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_", "dome") 
+create_master_flat("20250928_07in_NGC6946", 8, "ha", "NGC6946_", "dome") 
 
-create_master_flat("20251003_07in_NGC6946", 11, "ha", "FLAT_SKYFLAT_", "sky")
-create_master_flat("20251003_07in_NGC6946", 10, "ha", "FLAT_NGC 6946", "dome")
+create_master_flat("20251003_07in_NGC6946", 11, "ha", "FLAT_SKYFLAT_", "sky") 
+create_master_flat("20251003_07in_NGC6946", 10, "ha", "FLAT_NGC 6946_", "dome")
 
 create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
 create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_", "sky")
@@ -148,6 +148,8 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "sky")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_", "sky")
+#%% Creating master flats for each filter
+
 
 #%% Calibrating the science images
 
