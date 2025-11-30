@@ -26,12 +26,7 @@ def load_images(path, num_images, filter_name, file_prefix):
                     break
                 except FileNotFoundError:
                     continue
-            
-        try:
-            exptime = hdu.header["EXPTIME"]
-        except KeyError:
-            exptime = 0
-            print('No exposure time found')
+
             
         images.append([np.array(hdu.data)])
     print("Created a list containing each image")
