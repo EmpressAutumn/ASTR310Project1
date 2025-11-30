@@ -26,7 +26,13 @@ def load_images(path, num_images, filter_name, file_prefix):
                     break
                 except FileNotFoundError:
                     continue
-        exptime = hdu.header["EXPTIME"]
+            
+        try:
+            exptime = hdu.header["EXPTIME"]
+        except KeyError:
+            exptime = 0
+            print('No exposure time found')
+            
         images.append([np.array(hdu.data)])
     print("Created a list containing each image")
 
@@ -127,7 +133,7 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
         hdu.writeto(f"{image_folder}/FLAT/{kind}-master_flat-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
-create_master_flat("20250908_07in_NGC6946", 12, "g'")
+#create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
 create_master_flat("20250928_07in_NGC_6946", 10, "g'", "NGC6946_", "dome")
 create_master_flat("20250928_07in_NGC_6946", 8, "ha", "NGC6946_", "dome")
@@ -173,7 +179,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
         image -= dark.astype(np.uint16)
 
-        # Load the masterlat and divide by it
+        # Load the master flat and divide by it
         if flat_kind == "":
             flat_hdu = fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0]
         else:
@@ -182,7 +188,8 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         calibrated_image = image / np.array(flat_hdu.data)
         
         # Shift the image
-        calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]), int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
+        calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]), 
+                                   int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
                                    "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][3])
         
         science.append(calibrated_image)
