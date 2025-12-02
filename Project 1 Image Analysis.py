@@ -152,10 +152,11 @@ def combine_master_flat(image_folder, filter_name, kind):
     
     comb_mastflat = np.vstack(np.array(mastflats))
     comb_mastflat = median_combine(comb_mastflat)
+    print("Combined sky and dome flats")
 
-    
     hdu = fits.PrimaryHDU(comb_mastflat)
     hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
+    print("saved the .fits image")
 
 combine_master_flat("20251003_07in_NGC6946", "ha",["sky", "dome"])
 
