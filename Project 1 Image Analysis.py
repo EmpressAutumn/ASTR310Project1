@@ -150,7 +150,7 @@ def combine_master_flat(image_folder, filter_name, kind):
         mastflat_hdu = fits.open(f"{image_folder}/FLAT/{i}-master_flat-{filter_name}.fits")[0]
         mastflats.append(mastflat_hdu)
     
-    comb_mastflat = np.vstack(np.vstack(mastflats))
+    comb_mastflat = np.vstack(np.array(mastflats))
     comb_mastflat = median_combine(comb_mastflat)
 
     
