@@ -5,6 +5,7 @@ from astropy.io import fits
 from tqdm import tqdm
 
 from library.imshift import imshift
+
 #%% 
 
 def load_images(path, num_images, filter_name, file_prefix):
@@ -148,15 +149,13 @@ def combine_master_flat(image_folder, filter_name, kind):
     mastflats = []
     for i in kind:
         mastflat_hdu = fits.open(f"{image_folder}/FLAT/{i}-master_flat-{filter_name}.fits")[0]
-        mastflats.append(mastflat_hdu)
-    
-    comb_mastflat = np.vstack(np.array(mastflats))
-    comb_mastflat = median_combine(comb_mastflat)
-    print("Combined sky and dome flats")
+        mastflats.append(np.array(mastflat_hdu.data))
 
+    comb_mastflat = np.vstack(mastflats)
+    comb_mastflat = median_combine(comb_mastflat)
+    
     hdu = fits.PrimaryHDU(comb_mastflat)
     hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
-    print("saved the .fits image")
 
 combine_master_flat("20251003_07in_NGC6946", "ha",["sky", "dome"])
 
