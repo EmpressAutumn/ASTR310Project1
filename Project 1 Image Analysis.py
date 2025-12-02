@@ -143,8 +143,6 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "sky")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_", "sky")
-#%% Creating master flats for each filter
-
 
 #%% Calibrating the science images
 
@@ -168,11 +166,11 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         exptime = hdu.header["EXPTIME"]
 
         # Load the master bias and subtract it
-        bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias-{filter_name}.fits")[0]
+        bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias.fits")[0]
         image = np.array(hdu.data) - np.array(bias_hdu.data)
 
         # Load the master dark and subtract it, accounting for different exposure times
-        dark_hdu = fits.open(f"{image_folder}/DARK/master_dark-{filter_name}.fits")[0]
+        dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
         dark = exptime / dark_hdu.header["EXPTIME"] * np.array(dark_hdu.data)
         image -= dark.astype(np.uint16)
 
@@ -193,6 +191,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         print(f"Calibrated image {number}")
 
     master_science = np.sum(np.vstack(science), axis = 0)
+    print(master_science.shape)
 
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(master_science)
@@ -201,13 +200,13 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     print("Saved combined and calibrated image")
 
 calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
-calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC_6946_")
+calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_","dome")
+calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC_6946_", "dome")
 
-calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_")
-calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_")
-calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_")
+calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_", "dome")
+calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_", "dome")
+calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_", "dome")
+calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_", "dome")
 
 #%%
 
