@@ -143,6 +143,22 @@ create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "sky")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_", "sky")
+#%% Median combining sky and dome flats
+def combine_master_flat(image_folder, filter_name, kind):
+    mastflats = []
+    for i in kind:
+        mastflat_hdu = fits.open(f"{image_folder}/FLAT/{i}-master_flat-{filter_name}.fits")[0]
+        mastflats.append(mastflat_hdu)
+    
+    comb_mastflat = np.vstack(np.vstack(mastflats))
+    comb_mastflat = median_combine(comb_mastflat)
+
+    
+    hdu = fits.PrimaryHDU(comb_mastflat)
+    hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
+
+combine_master_flat("20251003_07in_NGC6946", "ha",["sky", "dome"])
+
 
 #%% Calibrating the science images
 
