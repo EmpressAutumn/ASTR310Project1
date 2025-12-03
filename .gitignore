@@ -11,3 +11,8 @@
 *_log.txt
 *.gif
 *.xml
+
+# Master calibration images
+!master_bias-*.fits
+!master_dark-*.fits
+!master_flat-*.fits
