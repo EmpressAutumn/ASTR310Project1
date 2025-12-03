@@ -23,6 +23,7 @@ def load_images(path, num_images, filter_name, file_prefix):
             continue
 
         images.append([np.array(hdu.data)])
+        exptime = hdu.header["EXPTIME"]
     print("Created a list containing each image")
 
     print("Stacked each image matrix")
@@ -49,7 +50,7 @@ def autostrip(imshifts):
             imshifts[key][i] = imshifts[key][i].strip()
     return imshifts
 
-#%% Creating the master bias
+#%% Creating the master biases
 
 # Median combine the bias images
 def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
@@ -93,11 +94,36 @@ create_master_dark("20250908_07in_NGC6946", 7, "g'")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
+#%% Creating a master dark for 9/28
+
+# Load the images
+dark_0908 = fits.open("20250908_07in_NGC6946/BIAS/master_bias.fits")[0]
+dark_1009 = fits.open("20251009_07in_NGC6946/BIAS/master_bias.fits")[0].data
+dark_1015 = fits.open("20251015_07in_NGC6946/BIAS/master_bias.fits")[0].data
+
+# Median combine the master dark images from the other nights
+master_dark_0928 = median_combine(np.array([dark_0908.data, dark_1009, dark_1015]))
+
+# Save the combined FITS dark image
+hdu_dark_0928 = fits.PrimaryHDU(master_dark_0928)
+hdu_dark_0928.header["EXPTIME"] = dark_0908.header["EXPTIME"]
+hdu_dark_0928.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite = True)
+print('Saved the .fits image')
+
 #%% Creating the master flats
 
-def create_master_flat(image_folder, num_images, filter_name, file_prefix="", kind=""):
+def create_master_flat(image_folder, num_images, filter_name, file_prefixes=None):
+    flat_list = []
+    exptime = 0
+
     # Load the images
-    flat, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
+    if file_prefixes is None:
+        file_prefixes = [""]
+    for prefix in file_prefixes:
+        this_flats, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, prefix)
+        for this_flat in this_flats:
+            flat_list.append(np.array([this_flat]))
+    flat = np.vstack(flat_list)
 
     # Load the master bias and subtract it
     bias_hdu = fits.open(f"{image_folder}/BIAS/master_bias.fits")[0]
@@ -113,47 +139,17 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
 
     # Save the combined FITS flat image
     hdu = fits.PrimaryHDU(master_flat)
-    if kind == "":
-        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
-    else:
-        hdu.writeto(f"{image_folder}/FLAT/{kind}-master_flat-{filter_name}.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
     print('Saved the .fits image')
 
-create_master_flat("20250908_07in_NGC6946", 12, "g'") 
+create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
-create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_") 
-create_master_flat("20250928_07in_NGC6946", 8, "ha", "NGC6946_") 
+create_master_flat("20250928_07in_NGC6946", 8, "ha", ["NGC6946_"])
 
-create_master_flat("20251003_07in_NGC6946", 11, "ha", "FLAT_SKYFLAT_", "sky") 
-create_master_flat("20251003_07in_NGC6946", 10, "ha", "FLAT_NGC 6946_", "dome")
+create_master_flat("20251009_07in_NGC6946", 13, "ha", ["FLAT_NGC6946_", "FLAT_skyflats_"])
 
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_", "sky")
-
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_", "dome")
-create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_", "dome")
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_", "sky")
-create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_", "sky")
-#%% Median combining sky and dome flats
-def combine_master_flat(image_folder, filter_name, kind):
-    mastflats = []
-    for i in kind:
-        mastflat_hdu = fits.open(f"{image_folder}/FLAT/{i}-master_flat-{filter_name}.fits")[0]
-        mastflats.append(np.array(mastflat_hdu.data))
-
-    comb_mastflats = np.stack(mastflats, axis = 0) #only 2 dimensions
-    comb_mastflat = median_combine(comb_mastflats)
-    print("combined master flats for night and filter")
-    
-    hdu = fits.PrimaryHDU(comb_mastflat)
-    hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
-    print("saved the .fits image")
-
-
-combine_master_flat("20251003_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251009_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251015_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251015_07in_NGC6946", "g'", ["sky", "dome"])
+create_master_flat("20251015_07in_NGC6946", 13, "g'", ["FLAT_NGC6946_", "FLAT_SKYFLAT_"])
+create_master_flat("20251015_07in_NGC6946", 13, "ha", ["FLAT_NGC6946_", "FLAT_SKYFLAT_"])
 
 #%% Calibrating the science images
 
@@ -190,15 +186,13 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         calibrated_image = image / np.array(flat_hdu.data)
         
         # Shift the image
-        calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]), 
-                                   int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
+        calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
+                                   int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]),
                                    "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][3])
         
         science.append(calibrated_image)
-        print(f"Calibrated image {number}")
 
     master_science = np.sum(np.stack(science), axis = 0)
-    print(master_science.shape)
 
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(master_science)
@@ -206,39 +200,40 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
 
-#calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
-#calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC6946_")
+calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
 
 calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_")
-calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_")
-calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC6946_")
+
+calibrate_science_images("20251009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
+
+calibrate_science_images("20251015_07in_NGC6946", 20, "g'", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 19, "ha", "LIGHT_NGC6946_")
 
 #%% Merge the images into one image
 
 def final_shift(image_folders, filter_name):
     science = []
-    shifts = np.loadtxt("Imshifts.txt", delimiter = ',' , skiprows = 1)
+    shifts = np.loadtxt("Imshifts.txt", delimiter = ',' , skiprows = 1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
     autostrip(shifts)
+
+    exptime = 0
     
     for i in range(len(image_folders)):
         # Load the image
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}"  
-        image = fits.open(f"{image_folders[i]}/LIGHT/master_science_-{filter_name}.fits")[0]
+        image_hdu = fits.open(f"{image_folders[i]}/LIGHT/master_science-{filter_name}.fits")[0]
+        exptime = image_hdu.header["EXPTIME"]
         
-        image = imshift(image, int(shifts[f"{image_folders[i]}-{filter_name}"][1]), int(shifts[f"{image_folders[i]}-{filter_name}"][2]))
-        science.append(image)
-        
+        image = imshift(image_hdu.data, int(shifts[f"{image_folders[i]}-{filter_name}"][2]), int(shifts[f"{image_folders[i]}-{filter_name}"][1]))
+        science.append(np.array([image]))
+
     master_science = np.sum(np.vstack(science), axis = 0)
 
-        # Save the calibrated FITS science image
+    # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(master_science)
+    hdu.header["EXPTIME"] = exptime
     hdu.writeto(f"master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
     
-final_shift(["20250908_07in_NGC6946","20250928_07in_NGC6946","202501015_07in_NGC6946"],"g'")
-final_shift(["20250928_07in_NGC6946", "202501003_07in_NGC6946","202501009_07in_NGC6946","202501015_07in_NGC6946"], "ha")   
+final_shift(["20250908_07in_NGC6946", "20251015_07in_NGC6946"], "g'")
+final_shift(["20250928_07in_NGC6946", "20251009_07in_NGC6946", "20251015_07in_NGC6946"], "ha")
