@@ -1,4 +1,4 @@
-# Authors -  Autumn Hoffensetz, Evelynn Chara McNeil
+#%% Authors -  Autumn Hoffensetz, Evelynn Chara McNeil
 
 import numpy as np
 from astropy.io import fits
@@ -6,12 +6,11 @@ from tqdm import tqdm
 
 from library.imshift import imshift
 
-#%% 
+#%% Define functions
 
 def load_images(path, num_images, filter_name, file_prefix):
     images = []  # this creates an unfilled list
     exptime = 0
-    filts = ["g'", "i'","ha"]
 
     for i in range(num_images):
         number = str(i)
@@ -21,14 +20,8 @@ def load_images(path, num_images, filter_name, file_prefix):
         try:
             hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
         except FileNotFoundError:
-            for f in filts:
-                try:
-                    hdu = fits.open(f"{path}/{file_prefix}{number}-{f}.fits")[0]
-                    break
-                except FileNotFoundError:
-                    continue
+            continue
 
-            
         images.append([np.array(hdu.data)])
     print("Created a list containing each image")
 
@@ -48,8 +41,7 @@ def median_combine(image_array):
     # Remove the duplicate median values (Thank you NumPy for being awful!)
     print("Removed duplicate median values")
     return array_image[:, :, 0]
-#%% 
-# Born of necessity, born of AI hallucination
+
 def autostrip(imshifts):
     for key in imshifts.keys():
         key.strip()
@@ -77,7 +69,6 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
 # Create master biases
 create_master_bias("20250908_07in_NGC6946", 12, "g'")
 create_master_bias("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
-create_master_bias("20251003_07in_NGC6946", 7, "ha", "BIAS_NGC 6946_")
 create_master_bias("20251009_07in_NGC6946", 7, "ha", "BIAS_NGC6946_")
 create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 
@@ -99,7 +90,6 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
 #Don't create dark for 9/28
-create_master_dark("20251003_07in_NGC6946", 7, "ha", "DARK_NGC 6946_")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
@@ -225,7 +215,7 @@ calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_")
 calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
 calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC6946_")
 
-#%%
+#%% Merge the images into one image
 
 def final_shift(image_folders, filter_name):
     science = []
@@ -252,5 +242,3 @@ def final_shift(image_folders, filter_name):
     
 final_shift(["20250908_07in_NGC6946","20250928_07in_NGC6946","202501015_07in_NGC6946"],"g'")
 final_shift(["20250928_07in_NGC6946", "202501003_07in_NGC6946","202501009_07in_NGC6946","202501015_07in_NGC6946"], "ha")   
-        
-        
