@@ -131,8 +131,8 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
 
 create_master_flat("20250908_07in_NGC6946", 12, "g'") 
 
-create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_", "dome") 
-create_master_flat("20250928_07in_NGC6946", 8, "ha", "NGC6946_", "dome") 
+create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_") 
+create_master_flat("20250928_07in_NGC6946", 8, "ha", "NGC6946_") 
 
 create_master_flat("20251003_07in_NGC6946", 11, "ha", "FLAT_SKYFLAT_", "sky") 
 create_master_flat("20251003_07in_NGC6946", 10, "ha", "FLAT_NGC 6946_", "dome")
@@ -150,7 +150,6 @@ def combine_master_flat(image_folder, filter_name, kind):
     for i in kind:
         mastflat_hdu = fits.open(f"{image_folder}/FLAT/{i}-master_flat-{filter_name}.fits")[0]
         mastflats.append(np.array(mastflat_hdu.data))
-
 
     comb_mastflats = np.stack(mastflats, axis = 0) #only 2 dimensions
     comb_mastflat = median_combine(comb_mastflats)
@@ -174,7 +173,6 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     shifts = np.loadtxt("Imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
     shifts = autostrip(shifts)
-    print(shifts)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -209,7 +207,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         science.append(calibrated_image)
         print(f"Calibrated image {number}")
 
-    master_science = np.sum(np.vstack(science), axis = 0)
+    master_science = np.sum(np.stack(science), axis = 0)
     print(master_science.shape)
 
     # Save the calibrated FITS science image
@@ -218,14 +216,14 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
 
-calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
-calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC_6946_")
+#calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
+#calibrate_science_images("20250928_07in_NGC6946", 11, "g'", "NGC6946_")
+calibrate_science_images("202501015_07in_NGC6946", 20, "g'", "LIGHT_NGC6946_")
 
 calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_")
 calibrate_science_images("202501003_07in_NGC6946", 13, "ha", "LIGHT_NGC 6946_")
 calibrate_science_images("202501009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
-calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC_6946_")
+calibrate_science_images("202501015_07in_NGC6946", 19, "ha", "LIGHT_NGC6946_")
 
 #%%
 
