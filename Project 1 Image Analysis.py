@@ -2,6 +2,7 @@
 
 import numpy as np
 from astropy.io import fits
+from scipy.ndimage import rotate
 from tqdm import tqdm
 
 from library.imshift import imshift
@@ -70,6 +71,7 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
 # Create master biases
 create_master_bias("20250908_07in_NGC6946", 12, "g'")
 create_master_bias("20250928_07in_NGC6946", 7, "ha", "NGC6946_")
+create_master_bias("20251003_07in_NGC6946", 7, "i'", "BIAS_NGC 6946_")
 create_master_bias("20251009_07in_NGC6946", 7, "ha", "BIAS_NGC6946_")
 create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 
@@ -90,24 +92,16 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     print('Saved the .fits image')
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
-#Don't create dark for 9/28
+# Don't create dark for 9/28
+create_master_dark("20251003_07in_NGC6946", 7, "i'", "DARK_NGC 6946_")
 create_master_dark("20251009_07in_NGC6946", 7, "ha", "DARK_NGC6946_")
 create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
-#%% Creating a master dark for 9/28
+#%% Reuse the 10/03 master dark for 9/28
 
-# Load the images
-dark_0908 = fits.open("20250908_07in_NGC6946/BIAS/master_bias.fits")[0]
-dark_1009 = fits.open("20251009_07in_NGC6946/BIAS/master_bias.fits")[0].data
-dark_1015 = fits.open("20251015_07in_NGC6946/BIAS/master_bias.fits")[0].data
+dark_1003 = fits.open("20251003_07in_NGC6946/BIAS/master_bias.fits")[0]
 
-# Median combine the master dark images from the other nights
-master_dark_0928 = median_combine(np.array([dark_0908.data, dark_1009, dark_1015]))
-
-# Save the combined FITS dark image
-hdu_dark_0928 = fits.PrimaryHDU(master_dark_0928)
-hdu_dark_0928.header["EXPTIME"] = dark_0908.header["EXPTIME"]
-hdu_dark_0928.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite = True)
+dark_1003.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite = True)
 print('Saved the .fits image')
 
 #%% Creating the master flats
@@ -144,7 +138,10 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefixes=None
 
 create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
-create_master_flat("20250928_07in_NGC6946", 8, "ha", ["NGC6946_"])
+create_master_flat("20250928_07in_NGC6946", 10, "g'", ["NGC6946_"])
+create_master_flat("20250928_07in_NGC6946", 9, "ha", ["NGC6946_"])
+
+create_master_flat("20251003_07in_NGC6946", 12, "ha", ["FLAT_NGC 6946_", "FLAT_SKYFLAT_"])
 
 create_master_flat("20251009_07in_NGC6946", 13, "ha", ["FLAT_NGC6946_", "FLAT_skyflats_"])
 
@@ -188,7 +185,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         # Shift the image
         calibrated_image = imshift(calibrated_image, int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
                                    int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1]),
-                                   "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][3])
+                                   "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][4])
         
         science.append(calibrated_image)
 
@@ -202,12 +199,15 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
 
 calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
 
-calibrate_science_images("20250928_07in_NGC6946", 12, "ha","NGC6946_")
+calibrate_science_images("20250928_07in_NGC6946", 10, "g'","NGC6946_")
+calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
+
+calibrate_science_images("20251003_07in_NGC6946", 14, "ha", "LIGHT_NGC 6946_")
 
 calibrate_science_images("20251009_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
 
-calibrate_science_images("20251015_07in_NGC6946", 20, "g'", "LIGHT_NGC6946_")
-calibrate_science_images("20251015_07in_NGC6946", 19, "ha", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "g'", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
 
 #%% Merge the images into one image
 
@@ -222,18 +222,36 @@ def final_shift(image_folders, filter_name):
     for i in range(len(image_folders)):
         # Load the image
         image_hdu = fits.open(f"{image_folders[i]}/LIGHT/master_science-{filter_name}.fits")[0]
-        exptime = image_hdu.header["EXPTIME"]
-        
-        image = imshift(image_hdu.data, int(shifts[f"{image_folders[i]}-{filter_name}"][2]), int(shifts[f"{image_folders[i]}-{filter_name}"][1]))
-        science.append(np.array([image]))
+        exptime += image_hdu.header["EXPTIME"]
 
-    master_science = np.sum(np.vstack(science), axis = 0)
+        # Rotate the image
+        print(f"Rotating by {float(shifts[f'{image_folders[i]}-{filter_name}'][3])} degrees.")
+        #image = rotate(image_hdu.data, float(shifts[f"{image_folders[i]}-{filter_name}"][3]), reshape=False)
+
+        # Shift the image
+        image = imshift(image_hdu.data, int(shifts[f"{image_folders[i]}-{filter_name}"][2]), int(shifts[f"{image_folders[i]}-{filter_name}"][1]))
+        science.append(np.array([image])[:image_hdu.data.shape[0], :image_hdu.data.shape[1]])
+
+        output_hdu = fits.PrimaryHDU(np.array(image))
+        output_hdu.writeto(f"output/master_science-{filter_name}-{i}.fits", overwrite=True)
+
+    master_science = np.transpose(np.vstack(science), (1, 2, 0))
+    print("Transposed the matrix")
+
+    # Take the median of each pixel value
+    for i in tqdm(range(len(master_science)), desc=f"{len(master_science)} Master Science Sum", unit="row"):
+        for j in range(len(master_science[i])):
+            master_science[i, j] = np.sum(master_science[i, j])
+
+    # Remove the duplicate median values (Thank you NumPy for being awful!)
+    print("Removed duplicate median values")
+    master_science = master_science[:, :, 0]
 
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(master_science)
     hdu.header["EXPTIME"] = exptime
     hdu.writeto(f"master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
-    
-final_shift(["20250908_07in_NGC6946", "20251015_07in_NGC6946"], "g'")
-final_shift(["20250928_07in_NGC6946", "20251009_07in_NGC6946", "20251015_07in_NGC6946"], "ha")
+
+#final_shift(["20250908_07in_NGC6946", "20251015_07in_NGC6946"], "g'")
+final_shift(["20251003_07in_NGC6946", "20251015_07in_NGC6946"], "ha")
