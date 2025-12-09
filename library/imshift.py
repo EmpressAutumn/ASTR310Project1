@@ -4,8 +4,6 @@ def imshift(im,nr,nc, rotate=False):
     """Shifts an image by nr rows and nc columns
     (which can be either positive or negative)"""
     # Image rotation ability by Autumn
-
-   
     if rotate:
         out = np.zeros(im.shape)
         for i in range(im.shape[0]):
