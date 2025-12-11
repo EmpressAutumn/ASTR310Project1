@@ -1,0 +1,117 @@
+Image Name,                  Date,    X,    Y, Rotate,   Rx,   Ry, Notes/Rotation
+
+0000-g'.fits,                 908,    0,    0,       ,     ,     , Target
+0001-g'.fits,                 908,   -2,    0,       ,     ,     ,
+0002-g'.fits,                 908,   -4,    0,       ,     ,     ,
+0003-g'.fits,                 908,   -6,    0,       ,     ,     ,
+0004-g'.fits,                 908,   -8,    1,       ,     ,     ,
+0005-g'.fits,                 908,  -11,    1,       ,     ,     ,
+0006-g'.fits,                 908,  -13,    1,       ,     ,     ,
+0007-g'.fits,                 908,   89, -147,       ,     ,     , Rotate 180
+0008-g'.fits,                 908,   87, -147,       ,     ,     , Rotate 180
+0009-g'.fits,                 908,   86, -148,       ,     ,     , Rotate 180
+
+NGC6946_0000-g'.fits,         928,    0,    0,       ,     ,     , Target
+NGC6946_0001-g'.fits,         928,   -1,   -1,       ,     ,     ,
+NGC6946_0002-g'.fits,         928,   -5,    0,       ,     ,     ,
+NGC6946_0003-g'.fits,         928,   -6,    0,       ,     ,     ,
+NGC6946_0004-g'.fits,         928,   -8,    0,       ,     ,     ,
+NGC6946_0006-g'.fits,         928,  -11,    1,       ,     ,     ,
+NGC6946_0007-g'.fits,         928,  -13,    1,       ,     ,     ,
+NGC6946_0008-g'.fits,         928,  -15,    1,       ,     ,     ,
+NGC6946_0009-g'.fits,         928,  -17,    1,       ,     ,     ,
+NGC6946_0010-g'.fits,         928, -749,  615,       ,     ,     , Rotate 180
+NGC6946_0011-g'.fits,         928, -748,  618,       ,     ,     , Rotate 180
+
+NGC6946_0000-ha.fits,         928,    0,    0,       ,     ,     , Target
+NGC6946_0001-ha.fits,         928,   -4,    1,       ,     ,     ,
+NGC6946_0002-ha.fits,         928,   -5,    1,       ,     ,     ,
+NGC6946_0003-ha.fits,         928,   -7,    1,       ,     ,     , Streaks
+NGC6946_0004-ha.fits,         928,   -8,    1,       ,     ,     ,
+NGC6946_0005-ha.fits,         928,   -9,    2,       ,     ,     ,
+NGC6946_0006-ha.fits,         928,  -11,    2,       ,     ,     ,
+NGC6946_0007-ha.fits,         928,  -13,    1,       ,     ,     ,
+NGC6946_0008-ha.fits,         928,  -15,    1,       ,     ,     ,
+NGC6946_0009-ha.fits,         928,  -18,    2,       ,     ,     ,
+NGC6946_0010-ha.fits,         928, -751,  616,       ,     ,     , Rotate 180
+NGC6946_0011-ha.fits,         928, -751,  613,       ,     ,     , Rotate 180
+
+LIGHT_NGC 6946_0000-ha.fits, 1003,    0,    0,       ,     ,     , Target
+LIGHT_NGC 6946_0001-ha.fits, 1003,   -1,    0,       ,     ,     ,
+LIGHT_NGC 6946_0002-ha.fits, 1003,   -3,    1,       ,     ,     ,
+LIGHT_NGC 6946_0003-ha.fits, 1003,   -4,    2,       ,     ,     , Satellite Streaks
+LIGHT_NGC 6946_0004-ha.fits, 1003,   -6,    1,       ,     ,     ,
+LIGHT_NGC 6946_0005-ha.fits, 1003,   -9,    3,       ,     ,     ,
+LIGHT_NGC 6946_0006-ha.fits, 1003,  -12,    3,       ,     ,     ,
+LIGHT_NGC 6946_0009-ha.fits, 1003,   79,  173,       ,     ,     , Rotate 180,
+LIGHT_NGC 6946_0010-ha.fits, 1003,   79,  173,       ,     ,     , Rotate 180,
+LIGHT_NGC 6946_0011-ha.fits, 1003,   77,  172,       ,     ,     , Rotate 180,
+LIGHT_NGC 6946_0012-ha.fits, 1003,   77,  171,       ,     ,     , Rotate 180,
+LIGHT_NGC 6946_0013-ha.fits, 1003,   75,  170,       ,     ,     , Rotate 180,
+
+LIGHT_NGC6946_0000-ha.fits,  1009,    0,    0,       ,     ,     , Target Rotate 180
+LIGHT_NGC6946_0001-ha.fits,  1009,   -1,   -1,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0002-ha.fits,  1009,   -2,   -1,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0003-ha.fits,  1009,   -4,   -1,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0004-ha.fits,  1009,   -5,   -2,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0005-ha.fits,  1009,   -6,   -2,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0006-ha.fits,  1009,   -7,   -2,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0007-ha.fits,  1009,   -7,   -3,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0008-ha.fits,  1009,   -9,   -3,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0009-ha.fits,  1009,  -11,   -4,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0011-ha.fits,  1009,  -12,   -5,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0013-ha.fits,  1009,  -17,   24,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0014-ha.fits,  1009,  -21,   23,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0016-ha.fits,  1009,  -28,   18,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0017-ha.fits,  1009,  -33,   14,       ,     ,     , Rotate 180
+
+LIGHT_NGC6946_0000-g'.fits,  1015,    0,    0,       ,     ,     , Target
+LIGHT_NGC6946_0001-g'.fits,  1015,   -1,    0,       ,     ,     ,
+LIGHT_NGC6946_0002-g'.fits,  1015,   -3,    0,       ,     ,     ,
+LIGHT_NGC6946_0003-g'.fits,  1015,   -6,  197,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0004-g'.fits,  1015,   -8,  196,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0005-g'.fits,  1015,   -9,  196,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0006-g'.fits,  1015,  -10,  196,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0007-g'.fits,  1015,  -12,  195,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0008-g'.fits,  1015,  -14,  195,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0009-g'.fits,  1015,  -15,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0011-g'.fits,  1015,  -18,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0012-g'.fits,  1015,  -22,  192,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0013-g'.fits,  1015,  -28,  190,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0014-g'.fits,  1015,  -33,  188,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0016-g'.fits,  1015,  -39,  185,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0017-g'.fits,  1015,  -45,  183,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0018-g'.fits,  1015,  -50,  181,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0019-g'.fits,  1015,  -56,  178,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0021-g'.fits,  1015,  -62,  174,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0022-g'.fits,  1015,  -68,  171,       ,     ,     , Rotate 180
+
+LIGHT_NGC6946_0000-ha.fits,  1015,    0,    0,       ,     ,     , Target
+LIGHT_NGC6946_0001-ha.fits,  1015,   -1,    0,       ,     ,     ,
+LIGHT_NGC6946_0002-ha.fits,  1015,   -4,    0,       ,     ,     ,
+LIGHT_NGC6946_0003-ha.fits,  1015,   -8,  195,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0004-ha.fits,  1015,   -9,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0006-ha.fits,  1015,  -12,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0007-ha.fits,  1015,  -14,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0008-ha.fits,  1015,  -15,  194,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0009-ha.fits,  1015,  -17,  193,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0011-ha.fits,  1015,  -20,  191,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0012-ha.fits,  1015,  -26,  190,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0013-ha.fits,  1015,  -32,  188,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0014-ha.fits,  1015,  -38,  185,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0016-ha.fits,  1015,  -43,  183,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0017-ha.fits,  1015,  -49,  181,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0018-ha.fits,  1015,  -55,  178,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0019-ha.fits,  1015,  -61,  175,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0021-ha.fits,  1015,  -67,  171,       ,     ,     , Rotate 180
+LIGHT_NGC6946_0022-ha.fits,  1015,  -72,  168,       ,     ,     , Rotate 180
+
+
+20250908_07in_NGC6946-g'        ,     0,    0,   0.00, 2890, 3212, Main Target
+20250928_07in_NGC6946-g'        ,  1116,   74,  -0.83, 2890, 3212,
+20251015_07in_NGC6946-g'        ,   170,  -67,   2.60, 2890, 3212,
+
+20250928_07in_NGC6946-ha        ,  1116,   75,  -0.82, 2890, 3212,
+20251003_07in_NGC6946-ha        ,   271, -198,  -4.83, 2890, 3212,
+20251009_07in_NGC6946-ha        ,   183,  -93,   2.65, 2890, 3212,
+20251015_07in_NGC6946-ha        ,   169,  -66    2.57, 2890, 3212,
