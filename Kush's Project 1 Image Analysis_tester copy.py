@@ -48,22 +48,26 @@ def load_images(path, num_images, filter_name, file_prefix=""):
     exptime = None
 
     for i in range(num_images):
+        # Create a 4 digit string of the index number
         number = str(i).zfill(4)
 
+        # Try loading the image
         try:
             hdu = fits.open(f"{path}/{file_prefix}{number}-{filter_name}.fits")[0]
         except FileNotFoundError:
             continue
 
+        # Add the image to the list
         images.append(hdu.data.astype(np.float64))
-
         if exptime is None:
             exptime = hdu.header["EXPTIME"]
 
     images = np.stack(images)  # shape (N, Y, X)
     print("Loaded image stack:", images.shape)
+
     return images, exptime
 
+# Remove any trailing or leading spaces from any elements in the imshifts map
 def autostrip(imshifts):
     for key in imshifts.keys():
         key.strip()
@@ -98,9 +102,9 @@ def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
     print("Removed duplicate median values")
 
     # Save the master FITS bias image
-    hdu = fits.PrimaryHDU(master_bias)
-    hdu.writeto(f"{image_folder}/BIAS/master_bias.fits", overwrite=True)
-    print("Saved the .fits image")
+    bias_hdu = fits.PrimaryHDU(master_bias)
+    bias_hdu.writeto(f"{image_folder}/BIAS/master_bias.fits", overwrite=True)
+    print("Saved the master bias")
 
 # Create master biases
 create_master_bias("20250908_07in_NGC6946", 12, "g'")
@@ -123,10 +127,10 @@ def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
     master_dark = np.nanmedian(np.stack(subtracted_darks), axis=0)
 
     # Save the master FITS dark image
-    hdu = fits.PrimaryHDU(master_dark)
-    hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"{image_folder}/DARK/master_dark.fits", overwrite=True)
-    print('Saved the .fits image')
+    dark_hdu = fits.PrimaryHDU(master_dark)
+    dark_hdu.header["EXPTIME"] = exptime
+    dark_hdu.writeto(f"{image_folder}/DARK/master_dark.fits", overwrite=True)
+    print("Saved the master dark")
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
 # Don't create dark for 9/28
@@ -136,9 +140,9 @@ create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
 #%% Reuse the 10/03 master dark for 9/28
 
-dark_1003 = fits.open("20251003_07in_NGC6946/DARK/master_dark.fits")[0]
-dark_1003.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite=True)
-print("Saved the .fits image")
+dark_1003_hdu = fits.open("20251003_07in_NGC6946/DARK/master_dark.fits")[0]
+dark_1003_hdu.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite=True)
+print("Saved the duplicated master dark")
 
 #%% Creating the master sky and dome flats
 
@@ -162,14 +166,14 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
     master_flat = np.nanmedian(np.stack(normalized_flats), axis=0)
 
     # Save the master FITS flat image
-    hdu = fits.PrimaryHDU(master_flat)
+    flat_hdu = fits.PrimaryHDU(master_flat)
     if kind in ["", "sky", "dome"]:
-        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite=True)
+        flat_hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite=True)
         if kind:
             print("Warning: 'kind' must be either 'sky' or 'dome'.")
     else:
-        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}-{kind}.fits", overwrite=True)
-    print("Saved the .fits image")
+        flat_hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}-{kind}.fits", overwrite=True)
+    print("Saved the master flat")
 
 create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
@@ -205,18 +209,19 @@ def combine_master_flat(image_folder, filter_name):
     # Normalize the master_flat
     master_flat = combined_master_flat / np.nanmedian(combined_master_flat)
 
-    # Save the master FITS flat image
+    # Save the combined master FITS flat image
     hdu = fits.PrimaryHDU(master_flat)
     hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
-    print("saved the .fits image")
+    print("Saved the combined master flat")
 
 combine_master_flat("20251003_07in_NGC6946", "ha")
 combine_master_flat("20251009_07in_NGC6946", "ha")
 combine_master_flat("20251015_07in_NGC6946", "ha")
 combine_master_flat("20251015_07in_NGC6946", "g'")
 
-#%%
+#%% Calibrating the science images
 
+# Draws a histogram of noise, which is useful for checking for errors
 def plot_adu_distribution(
     frames,
     bins=1000,
@@ -264,82 +269,77 @@ def plot_adu_distribution(
 
     return adu_min, adu_max
 
-#%% Calibrating the science images
+def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=""):
+    # Load imshifts.txt, the file containing image shifting information
+    imshifts = autostrip(
+        { row[0]: row[1:] for row in np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1, dtype=str) }
+    )
 
-def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", label=''):
-    science = []
-    exptime = 0
-    shifts = np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
-    shifts = {row[0]: row[1:] for row in shifts}
-    shifts = autostrip(shifts)
+    # Load the science images
+    sciences = []
+    total_exptime = 0
 
-    bias = fits.getdata(f"{image_folder}/BIAS/master_bias.fits").astype(np.float64)
-    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
-    dark_master = dark_hdu.data.astype(np.float64)
-    dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
-    
-    for i in tqdm(range(num_images)):
-        # Load the image
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
+    for i in range(num_images):
+        # Create a 4 digit string of the index number
+        number = str(i).zfill(4)
+
+        # Try loading the image
         try:
-            hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
-            print(number)
+            science_hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+            exptime = science_hdu.header["EXPTIME"]
         except FileNotFoundError:
             continue
-        exptime = hdu.header["EXPTIME"]
 
         # Load the master bias and subtract it
-        image = np.array(hdu.data) - bias
+        master_bias = np.asarray(fits.open(f"{image_folder}/BIAS/master_bias.fits")[0].data, dtype=np.float64)
+        bias_subtracted_science = science_hdu.data - master_bias
 
-        # Load the master dark and subtract it, accounting for different exposure times
-        dark = exptime / dark_exptime * np.array(dark_master)
-        image = image - dark
+        # Load the master dark, adjust it for exposure time, and subtract it
+        master_dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
+        adjusted_master_dark = exptime * master_dark_hdu.header["EXPTIME"] * np.asarray(master_dark_hdu.data, dtype=np.float64)
+        fully_subtracted_science = bias_subtracted_science - adjusted_master_dark
 
         # Load the master flat and divide by it
-        flat_safe = flat.copy()
-        flat_safe[flat_safe <= 0] = np.nan
-        calibrated_image = image / flat_safe
+        master_flat = np.asarray(fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}.fits")[0].data, dtype=np.float64)
+        master_flat[master_flat <= 0] = np.nan
+        divided_science = fully_subtracted_science / master_flat
 
-        x = int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2])
-        y = int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1])
-        rotate_180 = "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][4]
+        # Rotate and translate the science image
+        if "Rotate 180" in imshifts[f"{file_prefix}{number}-{filter_name}.fits"][4]:
+            shifted_science = imshift(
+                divided_science,
+                int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
+                imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1],
+                True
+            )
+        else:
+            shifted_science = imshift(
+                divided_science,
+                int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
+                imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1]
+            )
 
-        #  ROTATE FIRST
-        if rotate_180:
-            calibrated_image = np.rot90(calibrated_image, 2)
-        
-        #  SHIFT SECOND
-        calibrated_image = imshift(calibrated_image, x, y, False)
-        science.append(calibrated_image.astype(np.float32))
-        # fix_hot_pixels_8conn(calibrated_image, sigma=10)
-        # clipped = sigma_clip(calibrated_image, sigma=4, axis=0)
-        # calibrated_image = np.asarray(clipped)
-        print(f"Calibrated image {number}")
+        # Add the calibrated and shifted science image to the list
+        sciences.append(divided_science)
+        total_exptime += exptime
+        print(f"Calibrated and shifted image {number}")
+
     plot_adu_distribution(
-    science,
-    bins=2000,
-    use_log=True,
-    clip_percentile=99.999,
-    title=f"{filter_name} ADU Distribution — Night {image_folder}")
+        sciences,
+        bins=2000,
+        use_log=True,
+        clip_percentile=99.999,
+        title=f"{filter_name} ADU Distribution — Night {image_folder}"
+    )
     plt.savefig(f"{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
 
-    hot_pixels = 0
-    master = np.nansum(science, axis=0)
-    # fix_hot_pixels_8conn(master_science, sigma=10)
-    #print("MAX BEFORE:", np.nanmax(master_science))
-    cleaned = master
-    # cleaned = fix_hot_pixels_fast(master_science, sigma=5, size=3, max_iter=4)
-    print("MAX AFTER :", np.nanmax(cleaned))
-    print(cleaned.shape)
-    print(f"Total hot pixels fixed in master science: {hot_pixels}")
+    # Stack the science images together
+    master_science = np.nansum(sciences, axis=0)
 
-    # Save the calibrated FITS science image
-    hdu = fits.PrimaryHDU(cleaned)
-    hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}){label}.fits", overwrite=True)
+    # Save the master FITS science image
+    hdu = fits.PrimaryHDU(master_science)
+    hdu.header["EXPTIME"] = total_exptime
+    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
 
 calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
