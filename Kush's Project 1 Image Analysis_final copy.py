@@ -139,6 +139,57 @@ print('Saved the .fits image')
 
 #%% Creating the master flats
 
+
+def create_master_flat(image_folder, num_images, filter_name, kind= [""]):
+    images = []
+    exptime = 0
+
+    bias_hdu = fits.open(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits")[0]
+    bias = np.asarray(bias_hdu.data, dtype=np.float64)
+
+    dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
+    dark_master = np.asarray(dark_hdu.data, dtype=np.float64)
+    dark_exptime = dark_hdu.header["EXPTIME"]
+
+    for j in kind:
+        for i in range(num_images):
+            number = str(i)
+            while len(number) < 4:
+                number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
+            try:
+                hdu = fits.open(f"/users/kushpatel/{image_folder}/FLAT/{j}{number}-{filter_name}.fits")[0]
+            except FileNotFoundError:
+                continue
+
+            exptime = hdu.header["EXPTIME"]
+            img = np.asarray(hdu.data, dtype=np.float64)
+
+            # Scale dark to exposure time
+            dark = exptime / dark_exptime * dark_master
+
+            # Calibrate flat
+            img = img - bias - dark
+
+            img[img < 0] = 0  # Clip negative values to zero
+
+            # Normalize by its own median (illumination correction)
+            divider = np.nanmedian(img)
+            img /= divider
+            images.append(img)
+
+    if len(images) == 0:
+        raise RuntimeError("No flat images were successfully loaded.")
+
+    # TRUE PIXEL-WISE MEDIAN COMBINE
+    flat_stack = np.stack(images, axis=0)
+    master_flat = np.nanmedian(flat_stack, axis=0)
+
+    # Save the combined FITS flat image
+    hdu = fits.PrimaryHDU(master_flat)
+    hdu.writeto(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}-2.fits", overwrite = True)
+    print('Saved the .fits image')
+
+"""
 def create_master_flat(image_folder, num_images, filter_name, file_prefix="", kind=""):
     # Load the images
     images = []  # this creates an unfilled list
@@ -188,27 +239,24 @@ def create_master_flat(image_folder, num_images, filter_name, file_prefix="", ki
     hdu.writeto(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}{kind}.fits", overwrite = True)
     print('Saved the .fits image')
 
+"""
+
 create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
-create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_")
-create_master_flat("20250928_07in_NGC6946", 9, "ha", "NGC6946_")
+create_master_flat("20250928_07in_NGC6946", 10, "g'", ["NGC6946_"])
+create_master_flat("20250928_07in_NGC6946", 9, "ha", ["NGC6946_"])
 
-create_master_flat("20251003_07in_NGC6946", 12, "ha", "FLAT_NGC 6946_","dome")
-create_master_flat("20251003_07in_NGC6946", 12, "ha", "FLAT_SKYFLAT_",'sky')
+create_master_flat("20251003_07in_NGC6946", 12, "ha", ["FLAT_NGC 6946_","FLAT_SKYFLAT_"])
 
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_","dome")
-create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_","sky")
+create_master_flat("20251009_07in_NGC6946", 13, "ha", ["FLAT_NGC6946_","FLAT_skyflats_"])
 
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_","dome")
-create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_","sky")
+create_master_flat("20251015_07in_NGC6946", 13, "g'", ["FLAT_NGC6946_","FLAT_SKYFLAT_"])
 
-
-create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_","dome")
-create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_","sky")
+create_master_flat("20251015_07in_NGC6946", 13, "ha", ["FLAT_NGC6946_","FLAT_SKYFLAT_"])
 
 
 #%%
-
+"""
 def combine_master_flat(image_folder, filter_name, kind):
     mastflats = []
     for i in kind:
@@ -229,7 +277,7 @@ combine_master_flat("20251003_07in_NGC6946", "ha", ["sky", "dome"])
 combine_master_flat("20251009_07in_NGC6946", "ha", ["sky", "dome"])
 combine_master_flat("20251015_07in_NGC6946", "ha", ["sky", "dome"])
 combine_master_flat("20251015_07in_NGC6946", "g'", ["sky", "dome"])
-
+"""
 
 #%%
 
@@ -324,7 +372,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
     dark_master = dark_hdu.data.astype(np.float64)
     dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
+    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}-2.fits").astype(np.float64)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -391,19 +439,19 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     print("Saved combined and calibrated image")
 
 
-# calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
+calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
 
-# calibrate_science_images("20250928_07in_NGC6946", 10, "g'","NGC6946_")
-# calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
+calibrate_science_images("20250928_07in_NGC6946", 10, "g'","NGC6946_")
+calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
 
-
+# Cant do the following without accounting for rotation
 # calibrate_science_images("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
 
 calibrate_science_images("20251009_07in_NGC6946", 18, "ha", "LIGHT_NGC6946_")
 
-# calibrate_science_images("20251015_07in_NGC6946", 23, "g'", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "g'", "LIGHT_NGC6946_")
 
-# calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
 
 """
 for i in range(18):
@@ -424,7 +472,7 @@ def calibrate_science_images_1003(image_folder, num_images, filter_name, file_pr
     dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
     dark_master = dark_hdu.data.astype(np.float64)
     dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
+    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}-2.fits").astype(np.float64)
     
     for i in tqdm(range(num_images)):
         # Load the image
