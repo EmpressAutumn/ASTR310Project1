@@ -1,10 +1,12 @@
-#%% Authors -  Autumn Hoffensetz, Evelynn Chara McNeil
+#%% Authors -  Autumn Hoffensetz, Evelynn Chara McNeil, Kush Patel
 
 import numpy as np
 from astropy.io import fits
-from scipy.ndimage import rotate
+import matplotlib.pyplot as plt
+from scipy.ndimage import shift, rotate
 from tqdm import tqdm
 
+# imshift.py from UMD, edited to allow for 180 degree rotation
 def imshift(im, nr, nc, rotate=False):
     """
     Shift image by (nr, nc) with NaN padding for proper stack summation.
@@ -41,8 +43,6 @@ def imshift(im, nr, nc, rotate=False):
 
     return out
 
-#%% Define functions
-
 def load_images(path, num_images, filter_name, file_prefix=""):
     images = []
     exptime = None
@@ -64,10 +64,6 @@ def load_images(path, num_images, filter_name, file_prefix=""):
     print("Loaded image stack:", images.shape)
     return images, exptime
 
-def median_combine(image_stack):
-    # image_stack shape should be (N, Y, X)
-    return np.nanmedian(image_stack, axis=0)
-
 def autostrip(imshifts):
     for key in imshifts.keys():
         key.strip()
@@ -75,22 +71,36 @@ def autostrip(imshifts):
             imshifts[key][i] = imshifts[key][i].strip()
     return imshifts
 
+def rotate_about_point(img, angle_deg, center):
+    """
+    Rotate image about a specific (y,x) point.
+    """
+    cy, cx = center
+    # shift so rotation point is at array center
+    shifted = shift(img, shift=[img.shape[0]/2 - cy, img.shape[1]/2 - cx],
+                     order=3, mode='constant', cval=np.nan)
+    # rotate
+    rotated = rotate(shifted, angle_deg, reshape=False, order=3,
+                      mode='constant', cval=np.nan)
+    # shift back
+    unshifted = shift(rotated, shift=[cy - img.shape[0]/2, cx - img.shape[1]/2],
+                       order=3, mode='constant', cval=np.nan)
+    return unshifted
+
 #%% Creating the master biases
 
-# Median combine the bias images
 def create_master_bias(image_folder, num_images, filter_name, file_prefix=""):
-    # Load the images
-    bias, exptime = load_images(f"/users/kushpatel/{image_folder}/BIAS", num_images, filter_name, file_prefix)
+    # Load the raw biases
+    biases, exptime = load_images(f"{image_folder}/BIAS", num_images, filter_name, file_prefix)
 
     # Median combine the biases
-    master_bias = median_combine(bias)
-    print('Removed duplicate median values')
+    master_bias = np.nanmedian(biases, axis=0)
+    print("Removed duplicate median values")
 
-    # Save the combined FITS bias image
+    # Save the master FITS bias image
     hdu = fits.PrimaryHDU(master_bias)
-    hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits", overwrite = True)
-    print('Saved the .fits image')
+    hdu.writeto(f"{image_folder}/BIAS/master_bias.fits", overwrite=True)
+    print("Saved the .fits image")
 
 # Create master biases
 create_master_bias("20250908_07in_NGC6946", 12, "g'")
@@ -102,26 +112,20 @@ create_master_bias("20251015_07in_NGC6946", 7, "g'", "BIAS_NGC6946_")
 #%% Creating the master darks
 
 def create_master_dark(image_folder, num_images, filter_name, file_prefix=""):
-    # Load the images
-    dark, exptime = load_images(f"/users/kushpatel/{image_folder}/DARK", num_images, filter_name, file_prefix)
+    # Load the darks
+    darks, exptime = load_images(f"{image_folder}/DARK", num_images, filter_name, file_prefix)
 
-    bias_hdu = fits.open(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits")[0]
-    
     # Load the master bias and subtract it
-    bias = np.asarray(bias_hdu.data, dtype=np.float64)
+    master_bias = np.asarray(fits.open(f"{image_folder}/BIAS/master_bias.fits")[0].data, dtype=np.float64)
+    subtracted_darks = [ np.asarray(dark, dtype=np.float64) - master_bias for dark in darks ]
 
-    bias_subtracted = [
-    np.asarray(d, dtype=np.float64) - bias
-    for d in dark
-    ]
+    # Median combine the darks
+    master_dark = np.nanmedian(np.stack(subtracted_darks), axis=0)
 
-    master_dark = np.nanmedian(np.stack(bias_subtracted), axis=0)
-
-
-    # Save the combined FITS dark image
+    # Save the master FITS dark image
     hdu = fits.PrimaryHDU(master_dark)
     hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits", overwrite = True)
+    hdu.writeto(f"{image_folder}/DARK/master_dark.fits", overwrite=True)
     print('Saved the .fits image')
 
 create_master_dark("20250908_07in_NGC6946", 7, "g'")
@@ -132,61 +136,40 @@ create_master_dark("20251015_07in_NGC6946", 7, "g'", "DARK_NGC6946_")
 
 #%% Reuse the 10/03 master dark for 9/28
 
-dark_1003 = fits.open("/users/kushpatel/20251003_07in_NGC6946/DARK/master_dark.fits")[0]
+dark_1003 = fits.open("20251003_07in_NGC6946/DARK/master_dark.fits")[0]
+dark_1003.writeto("20250928_07in_NGC6946/DARK/master_dark.fits", overwrite=True)
+print("Saved the .fits image")
 
-dark_1003.writeto("/users/kushpatel/20250928_07in_NGC6946/DARK/master_dark.fits", overwrite = True)
-print('Saved the .fits image')
-
-#%% Creating the master flats
+#%% Creating the master sky and dome flats
 
 def create_master_flat(image_folder, num_images, filter_name, file_prefix="", kind=""):
-    # Load the images
-    images = []  # this creates an unfilled list
-    exptime = 0
+    # Load the flats
+    flats, exptime = load_images(f"{image_folder}/FLAT", num_images, filter_name, file_prefix)
 
-    bias_hdu = fits.open(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits")[0]
-    bias = np.asarray(bias_hdu.data, dtype=np.float64)
+    # Load the master bias and subtract it
+    master_bias = np.asarray(fits.open(f"{image_folder}/BIAS/master_bias.fits")[0].data, dtype=np.float64)
+    bias_subtracted_flats = [ np.asarray(flat, dtype=np.float64) - master_bias for flat in flats ]
 
-    dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
-    dark_master = np.asarray(dark_hdu.data, dtype=np.float64)
-    dark_exptime = dark_hdu.header["EXPTIME"]
+    # Load the master dark, adjust it for exposure time, and subtract it
+    master_dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
+    adjusted_master_dark = exptime * master_dark_hdu.header["EXPTIME"] * np.asarray(master_dark_hdu.data, dtype=np.float64)
+    fully_subtracted_flats = [ np.asarray(flat, dtype=np.float64) - adjusted_master_dark for flat in bias_subtracted_flats ]
 
-    for i in range(num_images):
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
-        try:
-            hdu = fits.open(f"/users/kushpatel/{image_folder}/FLAT/{file_prefix}{number}-{filter_name}.fits")[0]
-        except FileNotFoundError:
-            continue
+    # Normalize the flats
+    normalized_flats = [ flat / np.nanmedian(flat) for flat in fully_subtracted_flats ]
 
-        exptime = hdu.header["EXPTIME"]
-        img = np.asarray(hdu.data, dtype=np.float64)
+    # Median combine the flats
+    master_flat = np.nanmedian(np.stack(normalized_flats), axis=0)
 
-        # Scale dark to exposure time
-        dark = exptime / dark_exptime * dark_master
-
-        # Calibrate flat
-        img = img - bias - dark
-
-        img[img < 0] = 0  # Clip negative values to zero
-
-        # Normalize by its own median (illumination correction)
-        divider = np.nanmedian(img)
-        img /= divider
-        images.append(img)
-
-    if len(images) == 0:
-        raise RuntimeError("No flat images were successfully loaded.")
-
-    # TRUE PIXEL-WISE MEDIAN COMBINE
-    flat_stack = np.stack(images, axis=0)
-    master_flat = np.nanmedian(flat_stack, axis=0)
-
-    # Save the combined FITS flat image
+    # Save the master FITS flat image
     hdu = fits.PrimaryHDU(master_flat)
-    hdu.writeto(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}{kind}.fits", overwrite = True)
-    print('Saved the .fits image')
+    if kind in ["", "sky", "dome"]:
+        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite=True)
+        if kind:
+            print("Warning: 'kind' must be either 'sky' or 'dome'.")
+    else:
+        hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}-{kind}.fits", overwrite=True)
+    print("Saved the .fits image")
 
 create_master_flat("20250908_07in_NGC6946", 12, "g'")
 
@@ -194,7 +177,7 @@ create_master_flat("20250928_07in_NGC6946", 10, "g'", "NGC6946_")
 create_master_flat("20250928_07in_NGC6946", 9, "ha", "NGC6946_")
 
 create_master_flat("20251003_07in_NGC6946", 12, "ha", "FLAT_NGC 6946_","dome")
-create_master_flat("20251003_07in_NGC6946", 12, "ha", "FLAT_SKYFLAT_",'sky')
+create_master_flat("20251003_07in_NGC6946", 12, "ha", "FLAT_SKYFLAT_","sky")
 
 create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_NGC6946_","dome")
 create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_","sky")
@@ -202,43 +185,37 @@ create_master_flat("20251009_07in_NGC6946", 13, "ha", "FLAT_skyflats_","sky")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_NGC6946_","dome")
 create_master_flat("20251015_07in_NGC6946", 13, "g'", "FLAT_SKYFLAT_","sky")
 
-
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_NGC6946_","dome")
 create_master_flat("20251015_07in_NGC6946", 13, "ha", "FLAT_SKYFLAT_","sky")
 
+#%% Merging the sky and dome flats
 
-#%%
+def combine_master_flat(image_folder, filter_name):
+    # Load the master sky and dome flats
+    try:
+        master_sky_flat = np.asarray(fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}-sky.fits")[0].data, dtype=np.float64)
+        master_dome_flat = np.asarray(fits.open(f"{image_folder}/FLAT/master_flat-{filter_name}-dome.fits")[0].data, dtype=np.float64)
+    except FileNotFoundError:
+        print(f"Sky and/or dome flats not found in {image_folder}, are you sure they exist?")
+        return
 
-def combine_master_flat(image_folder, filter_name, kind):
-    mastflats = []
-    for i in kind:
-        mastflat_hdu = fits.open(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}{i}.fits")[0]
-        mastflats.append(np.array(mastflat_hdu.data))
+    # Divide the sky flat by the dome flat
+    combined_master_flat = master_sky_flat / master_dome_flat
 
-    comb_mastflats = np.stack(mastflats, axis = 0) #only 2 dimensions
-    comb_mastflat = median_combine(comb_mastflats)
-    comb_mastflat /= np.nanmedian(comb_mastflat) # Renormalize
-    print("combined master flats for night and filter")
-    
-    hdu = fits.PrimaryHDU(comb_mastflat)
-    hdu.writeto(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
+    # Normalize the master_flat
+    master_flat = combined_master_flat / np.nanmedian(combined_master_flat)
+
+    # Save the master FITS flat image
+    hdu = fits.PrimaryHDU(master_flat)
+    hdu.writeto(f"{image_folder}/FLAT/master_flat-{filter_name}.fits", overwrite = True)
     print("saved the .fits image")
 
-
-combine_master_flat("20251003_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251009_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251015_07in_NGC6946", "ha", ["sky", "dome"])
-combine_master_flat("20251015_07in_NGC6946", "g'", ["sky", "dome"])
-
+combine_master_flat("20251003_07in_NGC6946", "ha")
+combine_master_flat("20251009_07in_NGC6946", "ha")
+combine_master_flat("20251015_07in_NGC6946", "ha")
+combine_master_flat("20251015_07in_NGC6946", "g'")
 
 #%%
-
-from scipy.ndimage import median_filter, generic_filter
-import os
-from astropy.stats import sigma_clip
-
-import numpy as np
-import matplotlib.pyplot as plt
 
 def plot_adu_distribution(
     frames,
@@ -287,44 +264,20 @@ def plot_adu_distribution(
 
     return adu_min, adu_max
 
-#%%
-
-from scipy.ndimage import shift, rotate
-
-def rotate_about_point(img, angle_deg, center):
-    """
-    Rotate image about a specific (y,x) point.
-    """
-    cy, cx = center
-    # shift so rotation point is at array center
-    shifted = shift(img, shift=[img.shape[0]/2 - cy, img.shape[1]/2 - cx],
-                     order=3, mode='constant', cval=np.nan)
-    # rotate
-    rotated = rotate(shifted, angle_deg, reshape=False, order=3,
-                      mode='constant', cval=np.nan)
-    # shift back
-    unshifted = shift(rotated, shift=[cy - img.shape[0]/2, cx - img.shape[1]/2],
-                       order=3, mode='constant', cval=np.nan)
-    return unshifted
-
-
-
 #%% Calibrating the science images
 
-from astropy.stats import sigma_clip
-
-def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="",label=''):
+def calibrate_science_images(image_folder, num_images, filter_name, file_prefix="", label=''):
     science = []
     exptime = 0
-    shifts = np.loadtxt("/users/kushpatel/downloads/Imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
+    shifts = np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
     shifts = autostrip(shifts)
 
-    bias = fits.getdata(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits").astype(np.float64)
-    dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
+    bias = fits.getdata(f"{image_folder}/BIAS/master_bias.fits").astype(np.float64)
+    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
     dark_master = dark_hdu.data.astype(np.float64)
     dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
+    flat = fits.getdata(f"{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -332,7 +285,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
         try:
-            hdu = fits.open(f"/users/kushpatel/{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+            hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
             print(number)
         except FileNotFoundError:
             continue
@@ -371,7 +324,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     use_log=True,
     clip_percentile=99.999,
     title=f"{filter_name} ADU Distribution — Night {image_folder}")
-    plt.savefig(f"/users/kushpatel/{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
+    plt.savefig(f"{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
 
     hot_pixels = 0
     master = np.nansum(science, axis=0)
@@ -383,46 +336,35 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
     print(cleaned.shape)
     print(f"Total hot pixels fixed in master science: {hot_pixels}")
 
-
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(cleaned)
     hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"/users/kushpatel/{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}){label}.fits", overwrite=True)
+    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}){label}.fits", overwrite=True)
     print("Saved combined and calibrated image")
 
+calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
+calibrate_science_images("20250928_07in_NGC6946", 10, "g'","NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "g'", "LIGHT_NGC6946_")
 
-# calibrate_science_images("20250908_07in_NGC6946", 10, "g'")
-
-# calibrate_science_images("20250928_07in_NGC6946", 10, "g'","NGC6946_")
-# calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
-
-
-# calibrate_science_images("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
-
-# calibrate_science_images("20251009_07in_NGC6946", 18, "ha", "LIGHT_NGC6946_")
-
-# calibrate_science_images("20251015_07in_NGC6946", 23, "g'", "LIGHT_NGC6946_")
-
-# calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
-
-for i in range(18):
-    calibrate_science_images("20251009_07in_NGC6946", i+1, "ha", "LIGHT_NGC6946_",f"{i+1}")
-
+calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
+calibrate_science_images("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
+calibrate_science_images("20251009_07in_NGC6946", 18, "ha", "LIGHT_NGC6946_")
+calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
 
 #%%
 
 def calibrate_science_images_1003(image_folder, num_images, filter_name, file_prefix=""):
     science = []
     exptime = 0
-    shifts = np.loadtxt("/users/kushpatel/downloads/Imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
+    shifts = np.loadtxt("downloads/imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
     shifts = autostrip(shifts)
 
-    bias = fits.getdata(f"/users/kushpatel/{image_folder}/BIAS/master_bias.fits").astype(np.float64)
-    dark_hdu = fits.open(f"/users/kushpatel/{image_folder}/DARK/master_dark.fits")[0]
+    bias = fits.getdata(f"{image_folder}/BIAS/master_bias.fits").astype(np.float64)
+    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
     dark_master = dark_hdu.data.astype(np.float64)
     dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"/users/kushpatel/{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
+    flat = fits.getdata(f"{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
     
     for i in tqdm(range(num_images)):
         # Load the image
@@ -430,7 +372,7 @@ def calibrate_science_images_1003(image_folder, num_images, filter_name, file_pr
         while len(number) < 4:
             number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
         try:
-            hdu = fits.open(f"/users/kushpatel/{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
+            hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
         except FileNotFoundError:
             continue
         exptime = hdu.header["EXPTIME"]
@@ -479,7 +421,7 @@ def calibrate_science_images_1003(image_folder, num_images, filter_name, file_pr
     use_log=True,
     clip_percentile=99.999,
     title=f"{filter_name} ADU Distribution — Night {image_folder}")
-    plt.savefig(f"/users/kushpatel/{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
+    plt.savefig(f"{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
 
     hot_pixels = 0
     master = np.nansum(science_rotated, axis=0)
@@ -495,7 +437,7 @@ def calibrate_science_images_1003(image_folder, num_images, filter_name, file_pr
     # Save the calibrated FITS science image
     hdu = fits.PrimaryHDU(cleaned)
     hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"/users/kushpatel/{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}).fits", overwrite=True)
+    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}).fits", overwrite=True)
     print("Saved combined and calibrated image")
 
 calibrate_science_images_1003("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC 6946_")
@@ -518,25 +460,23 @@ def stat_report_fast(arr, name="array", sample=2_000_000):
     print(p)
 
 # load and inspect
-bias = fits.getdata("/users/kushpatel/20251015_07in_NGC6946/BIAS/master_bias.fits")
-dark = fits.getdata("/users/kushpatel/20251015_07in_NGC6946/DARK/master_dark.fits")
-flat = fits.getdata("/users/kushpatel/20251015_07in_NGC6946/FLAT/master_flat-ha.fits")
+bias = fits.getdata("20251015_07in_NGC6946/BIAS/master_bias.fits")
+dark = fits.getdata("20251015_07in_NGC6946/DARK/master_dark.fits")
+flat = fits.getdata("20251015_07in_NGC6946/FLAT/master_flat-ha.fits")
 
 stat_report_fast(bias, "master_bias")
 stat_report_fast(dark, "master_dark")
 stat_report_fast(flat, "master_flat (after normalization?)")
 
 # inspect one calibrated science frame quickly
-img = fits.getdata("/users/kushpatel/20251015_07in_NGC6946/LIGHT/LIGHT_NGC6946_0000-ha.fits").astype(np.float64)
-dark_header_exptime = fits.open("/users/kushpatel/20251015_07in_NGC6946/DARK/master_dark.fits")[0].header["EXPTIME"]
+img = fits.getdata("20251015_07in_NGC6946/LIGHT/LIGHT_NGC6946_0000-ha.fits").astype(np.float64)
+dark_header_exptime = fits.open("20251015_07in_NGC6946/DARK/master_dark.fits")[0].header["EXPTIME"]
 cal = (img - bias) - (300/ dark_header_exptime * dark)  # adapt exptime accordingly
 cal /= flat
 stat_report_fast(cal, "single_calibrated_frame")
 
 
 #%% Merge the images into one image
-
-import pandas as pd
 
 def load_shifts_table(path):
     shifts = np.loadtxt(path, delimiter=",", skiprows=1, dtype=str)
@@ -567,17 +507,17 @@ def rotate_about_point_safe(image, angle_deg, center_rc):
 
 # DONT CHANGE THE ORDER OF THESE IMAGES
 final_construct = []
-final_construct.append(fits.getdata("/users/kushpatel/20250908_07in_NGC6946/LIGHT/master_science-g'-2(20250908_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20250928_07in_NGC6946/LIGHT/master_science-g'-2(20250928_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20251015_07in_NGC6946/LIGHT/master_science-g'-2(20251015_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20250928_07in_NGC6946/LIGHT/master_science-ha-2(20250928_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20251003_07in_NGC6946/LIGHT/master_science-ha-2(20251003_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20251009_07in_NGC6946/LIGHT/master_science-ha-2(20251009_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("/users/kushpatel/20251015_07in_NGC6946/LIGHT/master_science-ha-2(20251015_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20250908_07in_NGC6946/LIGHT/master_science-g'-2(20250908_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20250928_07in_NGC6946/LIGHT/master_science-g'-2(20250928_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20251015_07in_NGC6946/LIGHT/master_science-g'-2(20251015_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20250928_07in_NGC6946/LIGHT/master_science-ha-2(20250928_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20251003_07in_NGC6946/LIGHT/master_science-ha-2(20251003_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20251009_07in_NGC6946/LIGHT/master_science-ha-2(20251009_07in_NGC6946).fits"))
+final_construct.append(fits.getdata("20251015_07in_NGC6946/LIGHT/master_science-ha-2(20251015_07in_NGC6946).fits"))
 
 calibrating_set = []
 
-shifting = load_shifts_table("/users/kushpatel/downloads/imshiftfinal.txt")
+shifting = load_shifts_table("downloads/imshiftfinal.txt")
 
 x_list = [0,1116,170,1116,271,183,169]
 y_list = [0,74,-67,75,-198,-93,-66]
@@ -626,29 +566,18 @@ print("Final finite pixels:", np.isfinite(final_calibrated).sum())
 print("Final min/max:", np.nanmin(final_calibrated), np.nanmax(final_calibrated))
 
 hdu = fits.PrimaryHDU(final_calibrated)
-hdu.writeto("/users/kushpatel/downloads/final_combined_image.fits", overwrite = True)
+hdu.writeto("downloads/final_combined_image.fits", overwrite = True)
 hdu_Ha = fits.PrimaryHDU(Ha_calibrated)
-hdu_Ha.writeto("/users/kushpatel/downloads/final_Ha_image.fits", overwrite = True)
+hdu_Ha.writeto("downloads/final_Ha_image.fits", overwrite = True)
 hdu_g = fits.PrimaryHDU(g_calibrated)
-hdu_g.writeto("/users/kushpatel/downloads/final_g_image.fits", overwrite = True)
-
-
-
-
-
-
-
-
-
-
-
+hdu_g.writeto("downloads/final_g_image.fits", overwrite = True)
 
 
 #%%
 
 def final_shift(image_folders, filter_name):
     science = []
-    shifts = np.loadtxt("/users/kushpatel/desktop/Imshifts.txt", delimiter = ',' , skiprows = 1, dtype=str)
+    shifts = np.loadtxt("desktop/imshifts.txt", delimiter = ',' , skiprows = 1, dtype=str)
     shifts = {row[0]: row[1:] for row in shifts}
     autostrip(shifts)
 
@@ -690,5 +619,3 @@ def final_shift(image_folders, filter_name):
 
 #final_shift(["20250908_07in_NGC6946", "20251015_07in_NGC6946"], "g'")
 final_shift(["20251003_07in_NGC6946", "20251015_07in_NGC6946"], "ha")
-
-# %%
