@@ -43,6 +43,44 @@ def imshift(im, nr, nc, rotate=False):
 
     return out
 
+# Altered version of AperE, removing negative sqrt errors and without the ability to plot
+def aperE(im, col, row, rad1, rad2, ir1, ir2, or1, or2, Kccd):
+    # Aperture Photometry
+    a, b = im.shape
+
+    xx, yy = np.meshgrid(range(b), range(a))
+
+    ixsrc = ((xx - col) / rad1) ** 2 + ((
+                                                    yy - row) / rad2) ** 2 <= 1  # returns a boolean array same size as the image where True is part of the target aperture
+
+    ixsky = np.logical_and(
+        (((xx - col) / or1) ** 2) + (((yy - row) / or2) ** 2) <= 1,
+        (((xx - col) / ir1) ** 2) + (((yy - row) / ir2) ** 2) >= 1,
+    )  # returns a boolean array same size as the image where True is part of the sky annulus and False is not.
+
+    src_pixels = im[ixsrc]  # returns a 1D array of pixel values in ADUs of the target aperture pixels
+    num_src = len(src_pixels)
+    src_err = np.sqrt(
+        np.clip(src_pixels / Kccd, 0, None))  # Removes negative sqrt errors to approximate Poisson read noise.
+    # Dividing by the Kccd converts ADU to electrons.
+
+    sky_pixels = im[ixsky]  # returns a 1D array of pixel values of the sky annulus
+    num_sky = len(sky_pixels)
+    sky = np.median(
+        sky_pixels)  # Median value of the sky annulus is taken as 'the' sky brightness. To be subtracted from source pixels.
+
+    sky_err = np.sqrt(np.clip(sky_pixels * num_src / num_sky / Kccd, 0, None))  # Removes negative sqrt errors.
+    # Sky error normalized and scaled by the number of sky pixels in the target aperture, and then converted to electrons
+
+    net_pixels = (src_pixels - sky)  # each src pixel is corrected by subtracting the median sky signal
+
+    flx = np.sum(net_pixels) / Kccd  # final flux value of the source in electrons
+    total_err = (
+            np.sqrt(np.sum(src_err ** 2) + np.sum(sky_err ** 2)) / Kccd
+    )  # final error through error propagation on the flx term.
+
+    return flx, total_err
+
 def load_images(path, num_images, filter_name, file_prefix=""):
     images = []
     exptime = None
@@ -355,39 +393,6 @@ calibrate_science_images("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
 calibrate_science_images("20251009_07in_NGC6946", 18, "ha", "LIGHT_NGC6946_")
 calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
 
-#%%
-
-def stat_report_fast(arr, name="array", sample=2_000_000):
-    a = np.asarray(arr, dtype=np.float64)
-    vals = a[np.isfinite(a)]
-    
-    if vals.size > sample:
-        idx = np.random.choice(vals.size, sample, replace=False)
-        vals = vals[idx]
-    
-    p = np.nanpercentile(vals, [0,1,5,25,50,75,95,99,100])
-    print(f"\n{name}")
-    print(" shape:", a.shape)
-    print(" min,1,5,25,50,75,95,99,max:")
-    print(p)
-
-# load and inspect
-bias = fits.getdata("20251015_07in_NGC6946/BIAS/master_bias.fits")
-dark = fits.getdata("20251015_07in_NGC6946/DARK/master_dark.fits")
-flat = fits.getdata("20251015_07in_NGC6946/FLAT/master_flat-ha.fits")
-
-stat_report_fast(bias, "master_bias")
-stat_report_fast(dark, "master_dark")
-stat_report_fast(flat, "master_flat (after normalization?)")
-
-# inspect one calibrated science frame quickly
-img = fits.getdata("20251015_07in_NGC6946/LIGHT/LIGHT_NGC6946_0000-ha.fits").astype(np.float64)
-dark_header_exptime = fits.open("20251015_07in_NGC6946/DARK/master_dark.fits")[0].header["EXPTIME"]
-cal = (img - bias) - (300/ dark_header_exptime * dark)  # adapt exptime accordingly
-cal /= flat
-stat_report_fast(cal, "single_calibrated_frame")
-
-
 #%% Merging the science images from each observing session
 
 def final_shift(image_folders, filter_name):
@@ -453,3 +458,113 @@ final_shift(
         "20251015_07in_NGC6946"
     ], "ha"
 )
+
+#%% Determining the sky annulus outer radius bound
+
+def manually_draw_ellipse(image, col0, row0, rad1_0, rad2_0, vmin=None, vmax=None):
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(image, vmin=vmin, vmax=vmax, cmap='plasma')
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+
+    ax.set_title("Adjust Ellipse for Initial Guess")
+
+    # Draw the ellipse
+    p = np.linspace(0, 2*np.pi, 400)
+    xc = col0 + rad1_0*np.cos(p)
+    yc = row0 + rad2_0*np.sin(p)
+    ax.plot(xc, yc, 'w', lw=2)
+
+    plt.show()
+
+    print("After closing the window, use these initial values:")
+    print(f"col = {col0}")
+    print(f"row = {row0}")
+    print(f"rad1 = {rad1_0:.1f}")
+    print(f"rad2 = {rad2_0:.1f}")
+
+# Load the master science images
+master_science_g = np.asarray(fits.open("master_science-g'.fits")[0].data, dtype=np.float64)
+master_science_ha = np.asarray(fits.open("master_science-ha.fits")[0].data, dtype=np.float64)
+
+# Manually test various aperture sizes
+manually_draw_ellipse(
+    master_science_g,
+    col0=3320,
+    row0=2190,
+    rad1_0=1050,
+    rad2_0=1050,
+    vmin=200000,
+    vmax=204000
+)
+
+manually_draw_ellipse(
+    master_science_ha,
+    col0=3320,
+    row0=2190,
+    rad1_0=1050,
+    rad2_0=1050,
+    vmin=1600,
+    vmax=1700
+)
+
+# 1050 is determined to be the edge of the background, so 1040 will be used as the sky annulus's outer radius
+r_max = 1040
+center = (2190, 3320)
+
+#%% Determining the radius and performing photometry
+
+def photometry(master_science, num_tests, r_min):
+    test_apertures = np.linspace(r_max - num_tests, r_max + num_tests, 1 + 2*num_tests)
+    noises = []
+    fluxes = []
+    snrs = []
+
+    # Loop through each test aperture
+    for test_aperture in test_apertures:
+        # Using EGAIN, found from header of uncalibrated science images
+        flux, noise = aperE(master_science, center[1], center[0], test_aperture, test_aperture, r_min, r_min, r_max, r_max, 1/0.242862924933434)
+        noises.append(noise)
+        fluxes.append(flux)
+        snrs.append(flux/noise) # SNR is flux divided by noise
+
+    # Get the change in SNR and flux
+    d_snrs = []
+    d_fluxes = []
+
+    for i in range(len(snrs) - 1):
+        d_snr = snrs[i + 1] - snrs[i]
+        d_snrs.append(d_snr)
+
+    for i in range(len(fluxes) - 1):
+        d_flux = fluxes[i + 1] - fluxes[i]
+        d_fluxes.append(d_flux)
+
+    test_apertures = np.asarray(test_apertures, dtype=float)
+    snrs = np.asarray(snrs, dtype=float)
+
+    # Mask out invalid entries
+    valid = np.isfinite(snrs)
+
+    # Mask within requested aperture window
+    in_window = (test_apertures >= r_min) & (test_apertures <= r_max)
+    mask = valid & in_window
+    if not mask.any():
+        return None, None, None
+
+    # Get the maximum SNR location
+    max_index_local = np.nanargmax(snrs[mask])
+
+    # Get the "global" index at that location
+    global_indices = np.nonzero(mask)[0]
+    max_index_global = int(global_indices[max_index_local])
+
+    # Print out the photometry results
+    print(f"Aperture = {float(test_apertures[max_index_global])} px")
+    print(f"Flux = {float(fluxes[max_index_global])}")
+    print(f"SNR = {float(snrs[max_index_global])}")
+
+    return max_index_global, float(test_apertures[max_index_global]), float(snrs[max_index_global])
+
+# 1010 pixels is used as the minimum radius
+index_g, radius_g, snr_g = photometry(master_science_g, 300, 1010)
+index_ha, radius_ha, snr_ha = photometry(master_science_ha, 300, 1010)
