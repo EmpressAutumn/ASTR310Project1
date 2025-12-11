@@ -75,21 +75,23 @@ def autostrip(imshifts):
             imshifts[key][i] = imshifts[key][i].strip()
     return imshifts
 
-def rotate_about_point(img, angle_deg, center):
+def rotate_about_point(image, angle, center):
     """
     Rotate image about a specific (y,x) point.
     """
-    cy, cx = center
-    # shift so rotation point is at array center
-    shifted = shift(img, shift=[img.shape[0]/2 - cy, img.shape[1]/2 - cx],
-                     order=3, mode='constant', cval=np.nan)
-    # rotate
-    rotated = rotate(shifted, angle_deg, reshape=False, order=3,
-                      mode='constant', cval=np.nan)
-    # shift back
-    unshifted = shift(rotated, shift=[cy - img.shape[0]/2, cx - img.shape[1]/2],
-                       order=3, mode='constant', cval=np.nan)
-    return unshifted
+
+    center_offset = (image.shape[0]/2 - center[0], image.shape[1]/2 - center[1])
+
+    # Shift the center of the image to (0, 0)
+    shifted_image = shift(image, center_offset, order=1, mode='constant', cval=0.0)
+
+    # Rotate the image
+    rotated_image = rotate(shifted_image, angle, reshape=False, order=1, mode='constant', cval=0.0)
+
+    # Shift (0, 0) back to the original image center
+    final_image = shift(rotated_image, (- center_offset[0], - center_offset[1]), order=1, mode='constant', cval=0.0)
+
+    return final_image
 
 #%% Creating the master biases
 
@@ -388,22 +390,6 @@ stat_report_fast(cal, "single_calibrated_frame")
 
 #%% Merging the science images from each observing session
 
-def rotate_about_point_safe(image, angle_deg, center_rc):
-    r0, c0 = center_rc
-
-    # Shift center to image center
-    shift_to_center = (image.shape[0]/2 - r0,
-                       image.shape[1]/2 - c0)
-
-    im1 = shift(image, shift_to_center, order=1, mode='constant', cval=0.0)
-
-    im2 = rotate(im1, angle_deg, reshape=False, order=1, mode='constant', cval=0.0)
-
-    im3 = shift(im2, (-shift_to_center[0], -shift_to_center[1]),
-                order=1, mode='constant', cval=0.0)
-
-    return im3
-
 def final_shift(image_folders, filter_name):
     # Load imshifts.txt, the file containing image shifting information
     imshifts = autostrip(
@@ -430,120 +416,40 @@ def final_shift(image_folders, filter_name):
         )
 
         # Rotate the image
-        rotated_science =
+        rotated_science = rotate_about_point(
+            translated_science,
+            float(imshifts[f"{image_folder}-{filter_name}.fits"][3]),
+            (
+                int(imshifts[f"{image_folder}-{filter_name}.fits"][5]) - int(imshifts[f"{image_folder}-{filter_name}.fits"][2]),
+                int(imshifts[f"{image_folder}-{filter_name}.fits"][4]) - int(imshifts[f"{image_folder}-{filter_name}.fits"][1])
+            )
+        )
 
+        # Add the shifted science image to the list
+        sciences.append(rotated_science)
+        total_exptime += exptime
 
-# DONT CHANGE THE ORDER OF THESE IMAGES
-final_construct = []
-final_construct.append(fits.getdata("20250908_07in_NGC6946/LIGHT/master_science-g'-2(20250908_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20250928_07in_NGC6946/LIGHT/master_science-g'-2(20250928_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20251015_07in_NGC6946/LIGHT/master_science-g'-2(20251015_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20250928_07in_NGC6946/LIGHT/master_science-ha-2(20250928_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20251003_07in_NGC6946/LIGHT/master_science-ha-2(20251003_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20251009_07in_NGC6946/LIGHT/master_science-ha-2(20251009_07in_NGC6946).fits"))
-final_construct.append(fits.getdata("20251015_07in_NGC6946/LIGHT/master_science-ha-2(20251015_07in_NGC6946).fits"))
+    # Stack the science images together
+    master_science = np.nansum(sciences, axis=0)
 
-calibrating_set = []
-
-shifting = load_shifts_table("downloads/imshiftfinal.txt")
-
-x_list = [0,1116,170,1116,271,183,169]
-y_list = [0,74,-67,75,-198,-93,-66]
-Rotate_list = [0,-0.83,2.60,-0.82,-4.83,2.65,2.57]
-ref_center = (3212, 2890)
-ref_center = (3212, 2890)  # row, col in the reference frame
-
-calibrating_set = []
-
-for i in range(len(final_construct)):
-    x = x_list[i]
-    y = y_list[i]
-    rotate_deg = Rotate_list[i]
-
-    img0 = final_construct[i].astype(np.float32)
-
-    if np.isfinite(img0).sum() < 1000:
-        print("INPUT DEAD:", i)
-        continue
-
-    # --- SHIFT FIRST ---
-    im_shifted = imshift(img0, x, y, False)
-
-    if np.isfinite(im_shifted).sum() < 1000:
-        print("SHIFT KILLED IMAGE:", i)
-        continue
-
-    # --- UPDATE ROTATION CENTER ---
-    new_center = (ref_center[0] - y, ref_center[1] - x)
-
-    # --- ROTATE ABOUT THE CORRECT SKY POINT ---
-    im_rotated = rotate_about_point_safe(im_shifted, rotate_deg, new_center)
-
-    if np.isfinite(im_rotated).sum() < 1000:
-        print("ROTATION KILLED IMAGE:", i)
-        continue
-
-    calibrating_set.append(im_rotated)
-
-calibrating_set = np.array(calibrating_set)
-Ha_calibrated = np.nansum(calibrating_set[3:], axis=0)
-g_calibrated  = np.nansum(calibrating_set[:3], axis=0)
-final_calibrated = Ha_calibrated + g_calibrated
-
-print("Final finite pixels:", np.isfinite(final_calibrated).sum())
-print("Final min/max:", np.nanmin(final_calibrated), np.nanmax(final_calibrated))
-
-hdu = fits.PrimaryHDU(final_calibrated)
-hdu.writeto("downloads/final_combined_image.fits", overwrite = True)
-hdu_Ha = fits.PrimaryHDU(Ha_calibrated)
-hdu_Ha.writeto("downloads/final_Ha_image.fits", overwrite = True)
-hdu_g = fits.PrimaryHDU(g_calibrated)
-hdu_g.writeto("downloads/final_g_image.fits", overwrite = True)
-
-
-#%%
-
-def final_shift(image_folders, filter_name):
-    science = []
-    shifts = np.loadtxt("desktop/imshifts.txt", delimiter = ',' , skiprows = 1, dtype=str)
-    shifts = {row[0]: row[1:] for row in shifts}
-    autostrip(shifts)
-
-    exptime = 0
-    
-    for i in range(len(image_folders)):
-        # Load the image
-        image_hdu = fits.open(f"{image_folders[i]}/LIGHT/master_science-{filter_name}.fits")[0]
-        exptime += image_hdu.header["EXPTIME"]
-
-        # Rotate the image
-        print(f"Rotating by {float(shifts[f'{image_folders[i]}-{filter_name}'][3])} degrees.")
-        #image = rotate(image_hdu.data, float(shifts[f"{image_folders[i]}-{filter_name}"][3]), reshape=False)
-
-        # Shift the image
-        image = imshift(image_hdu.data, int(shifts[f"{image_folders[i]}-{filter_name}"][2]), int(shifts[f"{image_folders[i]}-{filter_name}"][1]))
-        science.append(np.array([image])[:image_hdu.data.shape[0], :image_hdu.data.shape[1]])
-
-        output_hdu = fits.PrimaryHDU(np.array(image))
-        output_hdu.writeto(f"output/master_science-{filter_name}-{i}.fits", overwrite=True)
-
-    master_science = np.transpose(np.vstack(science), (1, 2, 0))
-    print("Transposed the matrix")
-
-    # Take the median of each pixel value
-    for i in tqdm(range(len(master_science)), desc=f"{len(master_science)} Master Science Sum", unit="row"):
-        for j in range(len(master_science[i])):
-            master_science[i, j] = np.sum(master_science[i, j])
-
-    # Remove the duplicate median values (Thank you NumPy for being awful!)
-    print("Removed duplicate median values")
-    master_science = master_science[:, :, 0]
-
-    # Save the calibrated FITS science image
-    hdu = fits.PrimaryHDU(master_science)
-    hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"master_science-{filter_name}.fits", overwrite=True)
+    # Save the master FITS science image
+    science_hdu = fits.PrimaryHDU(master_science)
+    science_hdu.header["EXPTIME"] = total_exptime
+    science_hdu.writeto("master_science-{filter_name}.fits", overwrite=True)
     print("Saved combined and calibrated image")
 
-#final_shift(["20250908_07in_NGC6946", "20251015_07in_NGC6946"], "g'")
-final_shift(["20251003_07in_NGC6946", "20251015_07in_NGC6946"], "ha")
+final_shift(
+    [
+        "20250908_07in_NGC6946",
+        "20250928_07in_NGC6946",
+        "20251015_07in_NGC6946"
+    ], "g'"
+)
+final_shift(
+    [
+        "20250928_07in_NGC6946",
+        "20251003_07in_NGC6946",
+        "20251009_07in_NGC6946",
+        "20251015_07in_NGC6946"
+    ], "ha"
+)
