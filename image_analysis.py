@@ -2,9 +2,9 @@
 
 import numpy as np
 from astropy.io import fits
+from astropy.stats import sigma_clipped_stats
 import matplotlib.pyplot as plt
 from scipy.ndimage import shift, rotate
-from tqdm import tqdm
 
 # imshift.py from UMD, edited to allow for 180 degree rotation
 def imshift(im, nr, nc, rotate=False):
@@ -568,3 +568,105 @@ def photometry(master_science, num_tests, r_min):
 # 1010 pixels is used as the minimum radius
 index_g, radius_g, snr_g = photometry(master_science_g, 300, 1010)
 index_ha, radius_ha, snr_ha = photometry(master_science_ha, 300, 1010)
+
+#%% Using boolean masking to calculate the galactic area
+
+def create_bounding_box(master_science, x_min, x_max, y_min, y_max):
+    bool_mask_science = master_science.copy()
+
+    # Create a boundary box
+    ny, nx = bool_mask_science.shape
+    y, x = np.indices((ny, nx))
+    inside_box = (x >= x_min) & (x <= x_max) & (y >= y_min) & (y <= y_max)
+
+    # Delete all data outside the boundaries
+    bool_mask_science[~inside_box] = np.nan
+
+    return bool_mask_science
+
+def get_galactic_radius(bool_mask_science):
+    # Get background statistics
+    mean, median, sigma = sigma_clipped_stats(bool_mask_science)
+
+    # Define threshold as 0.01-sigma above background
+    threshold = median + 0.04*sigma
+
+    # Boolean mask: True where galaxy pixels are
+    galaxy_mask = bool_mask_science > threshold
+
+    # Optional: compute area (number of pixels)
+    area_pixels = galaxy_mask.sum()
+
+    # 1 is where it appears to begin shrinking and background is darkened, so most noise based pixels appears to be gone at this point
+
+    for i in reversed([0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6]):
+        threshold2 = median + i*sigma
+
+        # Boolean mask: True where galaxy pixels are
+        galaxy_mask2 = bool_mask_science > threshold2
+
+        # Optional: compute area (number of pixels)
+        area_pixels2 = galaxy_mask2.sum()
+
+        plt.imshow(galaxy_mask2, cmap='gray')
+        plt.title("Boolean Mask")
+        plt.show()
+
+    plt.imshow(galaxy_mask2, cmap='gray')
+    plt.title("Boolean Mask")
+    plt.show()
+
+    plt.imshow(galaxy_mask, cmap='gray')
+    plt.title("Boolean Mask")
+    plt.show()
+
+    # image is your 2D numpy array
+    h, w = bool_mask_science.shape
+
+    # ellipse parameters
+    xc, yc = 3340, 2200     # example center
+    a, b = 600, 570       # semi-major and semi-minor axes
+
+    # coordinate grid
+    y, x = np.indices((h, w))
+
+    # shift coords
+    x_shift = x - xc
+    y_shift = y - yc
+
+    # ellipse equation
+    ellipse_mask = (x_shift**2 / a**2 + y_shift**2 / b**2) <= 1
+
+    galaxy_only = galaxy_mask2.copy()
+    galaxy_only[~ellipse_mask] = 0
+
+    # Almost all pixels are primarily saturated with galaxy light (good!)
+
+    plt.imshow(galaxy_only, cmap='gray')
+    plt.title("Boolean Mask")
+    plt.show()
+
+    # Now perform Monte Carlo simulation to estimate uncertainty centered around 1 sigma
+
+    count = np.zeros(10000)
+
+    random_coefficients = np.random.normal(1,0.5,10000)
+
+    for k in range(10000):
+        noisy = bool_mask_science + random_coefficients[k]*sigma
+        mask_k = noisy > threshold
+        mask_k[~ellipse_mask] = 0
+        count[k] = mask_k.sum()
+
+    uncertainty = np.std(count)
+    mean_count = np.mean(count)
+
+    print(f"Estimated area: {mean_count} +/- {uncertainty} pixels")
+
+# Reduce the images to a box surrounding the galaxy
+bool_mask_science_g = create_bounding_box(master_science_g, 1500, 5500, 1300, 3800)
+bool_mask_science_ha = create_bounding_box(master_science_ha, 1500, 5500, 1300, 3800)
+
+# Use a boolean mask to calculate galactic radius
+get_galactic_radius(bool_mask_science_g)
+get_galactic_radius(bool_mask_science_ha)
