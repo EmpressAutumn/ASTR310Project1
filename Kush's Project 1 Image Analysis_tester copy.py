@@ -275,7 +275,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         { row[0]: row[1:] for row in np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1, dtype=str) }
     )
 
-    # Load the science images
+    # Load, calibrate, and shift the science images
     sciences = []
     total_exptime = 0
 
@@ -292,7 +292,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
 
         # Load the master bias and subtract it
         master_bias = np.asarray(fits.open(f"{image_folder}/BIAS/master_bias.fits")[0].data, dtype=np.float64)
-        bias_subtracted_science = science_hdu.data - master_bias
+        bias_subtracted_science = np.asarray(science_hdu.data, dtype=np.float64) - master_bias
 
         # Load the master dark, adjust it for exposure time, and subtract it
         master_dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
@@ -305,25 +305,26 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         divided_science = fully_subtracted_science / master_flat
 
         # Rotate and translate the science image
-        if "Rotate 180" in imshifts[f"{file_prefix}{number}-{filter_name}.fits"][4]:
+        if "Rotate 180" in imshifts[f"{file_prefix}{number}-{filter_name}.fits"][6]:
             shifted_science = imshift(
                 divided_science,
                 int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
-                imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1],
+                int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1]),
                 True
             )
         else:
             shifted_science = imshift(
                 divided_science,
                 int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][2]),
-                imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1]
+                int(imshifts[f"{file_prefix}{number}-{filter_name}.fits"][1])
             )
 
         # Add the calibrated and shifted science image to the list
-        sciences.append(divided_science)
+        sciences.append(shifted_science)
         total_exptime += exptime
         print(f"Calibrated and shifted image {number}")
 
+    """
     plot_adu_distribution(
         sciences,
         bins=2000,
@@ -332,6 +333,7 @@ def calibrate_science_images(image_folder, num_images, filter_name, file_prefix=
         title=f"{filter_name} ADU Distribution — Night {image_folder}"
     )
     plt.savefig(f"{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
+    """
 
     # Stack the science images together
     master_science = np.nansum(sciences, axis=0)
@@ -350,98 +352,6 @@ calibrate_science_images("20250928_07in_NGC6946", 10, "ha","NGC6946_")
 calibrate_science_images("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC6946_")
 calibrate_science_images("20251009_07in_NGC6946", 18, "ha", "LIGHT_NGC6946_")
 calibrate_science_images("20251015_07in_NGC6946", 23, "ha", "LIGHT_NGC6946_")
-
-#%%
-
-def calibrate_science_images_1003(image_folder, num_images, filter_name, file_prefix=""):
-    science = []
-    exptime = 0
-    shifts = np.loadtxt("downloads/imshifts.txt", delimiter = ",", skiprows=1, dtype=str)
-    shifts = {row[0]: row[1:] for row in shifts}
-    shifts = autostrip(shifts)
-
-    bias = fits.getdata(f"{image_folder}/BIAS/master_bias.fits").astype(np.float64)
-    dark_hdu = fits.open(f"{image_folder}/DARK/master_dark.fits")[0]
-    dark_master = dark_hdu.data.astype(np.float64)
-    dark_exptime = dark_hdu.header["EXPTIME"]
-    flat = fits.getdata(f"{image_folder}/FLAT/master_flat-{filter_name}.fits").astype(np.float64)
-    
-    for i in tqdm(range(num_images)):
-        # Load the image
-        number = str(i)
-        while len(number) < 4:
-            number = f"0{number}"  # this is creating an index for numbers 0000 through num_images to call
-        try:
-            hdu = fits.open(f"{image_folder}/LIGHT/{file_prefix}{number}-{filter_name}.fits")[0]
-        except FileNotFoundError:
-            continue
-        exptime = hdu.header["EXPTIME"]
-
-        # Load the master bias and subtract it
-        image = np.array(hdu.data) - bias
-
-        # Load the master dark and subtract it, accounting for different exposure times
-        dark = exptime / dark_exptime * np.array(dark_master)
-        image = image - dark
-
-        # Load the master flat and divide by it
-        flat_safe = flat.copy()
-        flat_safe[flat_safe <= 0] = np.nan
-        calibrated_image = image / flat_safe
-
-        x = int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][2])
-        y = int(shifts[f"{file_prefix}{number}-{filter_name}.fits"][1])
-        rotate_180 = "Rotate 180" in shifts[f"{file_prefix}{number}-{filter_name}.fits"][4]
-
-        #  ROTATE FIRST
-        if rotate_180:
-            calibrated_image = np.rot90(calibrated_image, 2)
-        
-        #  SHIFT SECOND
-        calibrated_image = imshift(calibrated_image, x, y, False)
-        science.append(calibrated_image.astype(np.float32))
-        # fix_hot_pixels_8conn(calibrated_image, sigma=10)
-        # clipped = sigma_clip(calibrated_image, sigma=4, axis=0)
-        # calibrated_image = np.asarray(clipped)
-        print(f"Calibrated image {number}")
-    
-    science_rotated = []
-    for i in range(len(science)):
-        if i < 6:
-            science_rotated.append(science[i])
-        else:
-            deg_rotate = -9.79
-            coordinates = (2940,2989) # x,y of star reference point
-            image_rotate = rotate_about_point(science[i], deg_rotate, coordinates)
-            science_rotated.append(image_rotate)
-
-    plot_adu_distribution(
-    science_rotated,
-    bins=2000,
-    use_log=True,
-    clip_percentile=99.999,
-    title=f"{filter_name} ADU Distribution — Night {image_folder}")
-    plt.savefig(f"{image_folder}/LIGHT/{filter_name}_ADU_Distribution.png")
-
-    hot_pixels = 0
-    master = np.nansum(science_rotated, axis=0)
-    # fix_hot_pixels_8conn(master_science, sigma=10)
-    #print("MAX BEFORE:", np.nanmax(master_science))
-    cleaned = master
-    # cleaned = fix_hot_pixels_fast(master_science, sigma=5, size=3, max_iter=4)
-    print("MAX AFTER :", np.nanmax(cleaned))
-    print(cleaned.shape)
-    print(f"Total hot pixels fixed in master science: {hot_pixels}")
-
-
-    # Save the calibrated FITS science image
-    hdu = fits.PrimaryHDU(cleaned)
-    hdu.header["EXPTIME"] = exptime
-    hdu.writeto(f"{image_folder}/LIGHT/master_science-{filter_name}-2({image_folder}).fits", overwrite=True)
-    print("Saved combined and calibrated image")
-
-calibrate_science_images_1003("20251003_07in_NGC6946", 15, "ha", "LIGHT_NGC 6946_")
-
 
 #%%
 
@@ -476,18 +386,7 @@ cal /= flat
 stat_report_fast(cal, "single_calibrated_frame")
 
 
-#%% Merge the images into one image
-
-def load_shifts_table(path):
-    shifts = np.loadtxt(path, delimiter=",", skiprows=1, dtype=str)
-    shift_dict = {row[0].strip(): row[1:] for row in shifts}
-
-    # strip all values
-    for k in shift_dict:
-        shift_dict[k] = [v.strip() for v in shift_dict[k]]
-
-    return shift_dict
-
+#%% Merging the science images from each observing session
 
 def rotate_about_point_safe(image, angle_deg, center_rc):
     r0, c0 = center_rc
@@ -504,6 +403,35 @@ def rotate_about_point_safe(image, angle_deg, center_rc):
                 order=1, mode='constant', cval=0.0)
 
     return im3
+
+def final_shift(image_folders, filter_name):
+    # Load imshifts.txt, the file containing image shifting information
+    imshifts = autostrip(
+        { row[0]: row[1:] for row in np.loadtxt("imshifts.txt", delimiter = ",", skiprows=1, dtype=str) }
+    )
+
+    # Load and shift the science images
+    sciences = []
+    total_exptime = 0
+
+    for image_folder in image_folders:
+        # Try loading the image
+        try:
+            science_hdu = fits.open(f"{image_folder}/LIGHT/master_science-{filter_name}.fits")[0]
+            exptime = science_hdu.header["EXPTIME"]
+        except FileNotFoundError:
+            continue
+
+        # Translate the image
+        translated_science = imshift(
+            np.asarray(science_hdu.data, dtype=np.float64),
+            int(imshifts[f"{image_folder}-{filter_name}.fits"][2]),
+            int(imshifts[f"{image_folder}-{filter_name}.fits"][1])
+        )
+
+        # Rotate the image
+        rotated_science =
+
 
 # DONT CHANGE THE ORDER OF THESE IMAGES
 final_construct = []
